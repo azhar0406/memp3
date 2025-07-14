@@ -68,4 +68,4 @@ A play on “memory” + “MP3” — `memp3` encodes structured memory into au
 
 ## 🧠 System Overview
 
-See [`audiomemory-complete-plan.md`](./audiomemory-complete-plan.md) for the full system design and implementation roadmap.
+See [`memp3-complete-plan.md`](./memp3-complete-plan.md) for the full system design and implementation roadmap.
