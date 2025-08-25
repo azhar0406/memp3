@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memp3"
+version = "0.1.0"
+description = "AI memory encoded in sound. Lossless, fast, and hardware-adaptive."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Azhar", email = "azhar@example.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.9.0",
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+    "soundfile>=0.12.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+]
+
+[project.scripts]
+memp3 = "memp3.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["memp3"]
