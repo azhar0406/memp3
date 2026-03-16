@@ -146,8 +146,10 @@ def semantic_search(
 def mcp():
     """Start MCP server for Claude Desktop (stdio transport)"""
     import asyncio
+    import sys
     from memp3.mcp.server import run_mcp_server
-    typer.echo("Starting MCP server (stdio transport)...")
+    # No stdout output — MCP uses stdio for JSON protocol
+    print("Starting MCP server (stdio transport)...", file=sys.stderr)
     asyncio.run(run_mcp_server())
 
 
