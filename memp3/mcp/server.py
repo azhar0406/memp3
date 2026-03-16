@@ -13,9 +13,15 @@ logger = logging.getLogger(__name__)
 server = Server("memp3")
 
 
+_storage_instance = None
+
+
 def _get_storage():
-    from memp3.core.storage import StorageManager
-    return StorageManager()
+    global _storage_instance
+    if _storage_instance is None:
+        from memp3.core.storage import StorageManager
+        _storage_instance = StorageManager()
+    return _storage_instance
 
 
 @server.list_tools()

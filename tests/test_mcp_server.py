@@ -5,12 +5,14 @@ from memp3.mcp.server import call_tool, list_tools
 
 @pytest.fixture(autouse=True)
 def mock_storage(tmp_path, monkeypatch):
+    import memp3.mcp.server as srv
     from memp3.core.storage import StorageManager
     storage = StorageManager(base_path=str(tmp_path / "memp3"))
 
-    monkeypatch.setattr("memp3.mcp.server._get_storage", lambda: storage)
+    monkeypatch.setattr(srv, "_storage_instance", storage)
     yield storage
     storage.close()
+    monkeypatch.setattr(srv, "_storage_instance", None)
 
 
 @pytest.mark.asyncio

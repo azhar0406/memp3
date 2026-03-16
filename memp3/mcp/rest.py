@@ -12,9 +12,15 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="memp3 REST API", description="AI memory encoded in sound")
 
 
+_storage_instance = None
+
+
 def _get_storage():
-    from memp3.core.storage import StorageManager
-    return StorageManager()
+    global _storage_instance
+    if _storage_instance is None:
+        from memp3.core.storage import StorageManager
+        _storage_instance = StorageManager()
+    return _storage_instance
 
 
 class MemoryContent(BaseModel):
