@@ -2,11 +2,19 @@
 
 Handles JSON-RPC directly over stdin/stdout without the heavy mcp SDK
 (which pulls in pydantic, jsonschema, etc. adding ~1.3s startup).
+
+IMPORTANT: Uses sys.stdin.buffer.readline() instead of iterating sys.stdin
+to avoid Python's read-ahead buffer which causes messages to get stuck.
 """
+import io
 import json
 import logging
+import os
 import sys
 import time
+
+# Force unbuffered stdout so responses reach Claude Desktop immediately
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n", write_through=True)
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -148,23 +156,23 @@ def handle_tool_call(name, arguments):
 
 
 def send(msg):
-    """Write a JSON-RPC message to stdout."""
+    """Write a JSON-RPC message to stdout — immediately flushed."""
     data = json.dumps(msg)
     sys.stdout.write(data + "\n")
     sys.stdout.flush()
 
 
 def handle_message(msg):
-    """Process one JSON-RPC message and optionally return a response."""
+    """Process one JSON-RPC message and return a response."""
     method = msg.get("method")
     msg_id = msg.get("id")
 
-    # Notifications (no id) — just acknowledge
+    # Notifications (no id) — no response needed
     if msg_id is None:
+        logger.debug("Notification: %s", method)
         return
 
     if method == "initialize":
-        # Negotiate protocol version with client
         client_version = msg.get("params", {}).get("protocolVersion", "2024-11-05")
         logger.info("Client requested protocol version: %s", client_version)
         send({
@@ -220,17 +228,29 @@ def handle_message(msg):
 
 def main():
     logger.info("=== memp3 MCP server starting (lightweight) ===")
-    for line in sys.stdin:
-        line = line.strip()
+
+    # Read from raw binary buffer — avoids Python's TextIOWrapper read-ahead
+    # buffer which can delay message delivery by holding data in an internal
+    # buffer waiting for more bytes before yielding a line.
+    stdin = sys.stdin.buffer
+
+    while True:
+        raw_line = stdin.readline()
+        if not raw_line:
+            logger.info("stdin closed, shutting down")
+            break
+
+        line = raw_line.decode("utf-8").strip()
         if not line:
             continue
+
         try:
             msg = json.loads(line)
             handle_message(msg)
         except json.JSONDecodeError:
-            logger.error("Invalid JSON: %s", line[:100])
+            logger.error("Invalid JSON: %s", line[:200])
         except Exception:
-            logger.exception("Unhandled error")
+            logger.exception("Unhandled error processing message")
 
 
 main()
