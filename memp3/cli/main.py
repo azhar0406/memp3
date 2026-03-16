@@ -1,32 +1,35 @@
 import typer
-import uvicorn
 from typing import Optional
-from memp3.core.storage import StorageManager
-from memp3.mcp.server import app as mcp_app
 
 app = typer.Typer()
-storage = StorageManager()
+
+
+def _get_storage():
+    from memp3.core.storage import StorageManager
+    return StorageManager()
+
 
 @app.command()
 def encode(
     text: str = typer.Argument(..., help="Text to encode to audio memory"),
-    tags: Optional[str] = typer.Option(None, "-t", "--tags", help="Tags for the memory")
+    tags: Optional[str] = typer.Option(None, "-t", "--tags", help="Tags for the memory"),
 ):
     """Encode text to audio memory"""
     try:
-        mem_id = storage.store(text, tags)
+        mem_id = _get_storage().store(text, tags)
         typer.echo(f"Memory stored with ID: {mem_id}")
     except Exception as e:
         typer.echo(f"Error encoding memory: {e}")
         raise typer.Exit(code=1)
 
+
 @app.command()
 def decode(
-    mem_id: str = typer.Argument(..., help="Memory ID to decode")
+    mem_id: str = typer.Argument(..., help="Memory ID to decode"),
 ):
     """Decode audio memory to text"""
     try:
-        content = storage.retrieve(mem_id)
+        content = _get_storage().retrieve(mem_id)
         typer.echo(f"Content: {content}")
     except KeyError:
         typer.echo(f"Memory {mem_id} not found")
@@ -35,17 +38,18 @@ def decode(
         typer.echo(f"Error decoding memory: {e}")
         raise typer.Exit(code=1)
 
+
 @app.command()
 def search(
-    query: str = typer.Argument(..., help="Search query")
+    query: str = typer.Argument(..., help="Search query"),
 ):
     """Search memories"""
     try:
-        results = storage.search(query)
+        results = _get_storage().search(query)
         if not results:
             typer.echo("No memories found")
             return
-            
+
         typer.echo(f"Found {len(results)} memory(s):")
         for result in results:
             typer.echo(f"  {result['id']}: {result['content'][:50]}...")
@@ -53,15 +57,16 @@ def search(
         typer.echo(f"Error searching memories: {e}")
         raise typer.Exit(code=1)
 
-@app.command()
-def list():
+
+@app.command(name="list")
+def list_memories():
     """List all memories"""
     try:
-        results = storage.list_all()
+        results = _get_storage().list_all()
         if not results:
             typer.echo("No memories found")
             return
-            
+
         typer.echo(f"Found {len(results)} memory(s):")
         for result in results:
             typer.echo(f"  {result['id']}: {result['content'][:50]}...")
@@ -69,14 +74,94 @@ def list():
         typer.echo(f"Error listing memories: {e}")
         raise typer.Exit(code=1)
 
+
 @app.command()
-def mcp(
-    host: str = typer.Option("127.0.0.1", help="Host to bind the MCP server to"),
-    port: int = typer.Option(3141, help="Port to bind the MCP server to")
+def delete(
+    mem_id: str = typer.Argument(..., help="Memory ID to delete"),
 ):
-    """Start MCP server for Claude Desktop"""
-    typer.echo(f"Starting MCP server on {host}:{port}")
-    uvicorn.run(mcp_app, host=host, port=port, log_level="info")
+    """Delete a memory"""
+    try:
+        _get_storage().delete(mem_id)
+        typer.echo(f"Memory {mem_id} deleted")
+    except KeyError:
+        typer.echo(f"Memory {mem_id} not found")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.echo(f"Error deleting memory: {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def info(
+    mem_id: str = typer.Argument(..., help="Memory ID to inspect"),
+):
+    """Show metadata for a memory"""
+    try:
+        data = _get_storage().get_info(mem_id)
+        for key, value in data.items():
+            typer.echo(f"  {key}: {value}")
+    except KeyError:
+        typer.echo(f"Memory {mem_id} not found")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.echo(f"Error: {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def stats():
+    """Show storage statistics"""
+    try:
+        data = _get_storage().stats()
+        for key, value in data.items():
+            typer.echo(f"  {key}: {value}")
+    except Exception as e:
+        typer.echo(f"Error: {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command(name="semantic-search")
+def semantic_search(
+    query: str = typer.Argument(..., help="Semantic search query"),
+    top_k: int = typer.Option(5, "-k", "--top-k", help="Number of results"),
+):
+    """Search memories by semantic similarity"""
+    try:
+        results = _get_storage().semantic_search(query, top_k=top_k)
+        if not results:
+            typer.echo("No memories found")
+            return
+        typer.echo(f"Found {len(results)} result(s):")
+        for r in results:
+            typer.echo(f"  [{r['score']:.3f}] {r['id']}: {r['content'][:50]}...")
+    except RuntimeError as e:
+        typer.echo(f"Error: {e}")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.echo(f"Error: {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def mcp():
+    """Start MCP server for Claude Desktop (stdio transport)"""
+    import asyncio
+    from memp3.mcp.server import run_mcp_server
+    typer.echo("Starting MCP server (stdio transport)...")
+    asyncio.run(run_mcp_server())
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", help="Host to bind the REST server to"),
+    port: int = typer.Option(3141, help="Port to bind the REST server to"),
+):
+    """Start REST API server"""
+    import uvicorn
+    from memp3.mcp.rest import app as rest_app
+    typer.echo(f"Starting REST server on {host}:{port}")
+    uvicorn.run(rest_app, host=host, port=port, log_level="info")
+
 
 if __name__ == "__main__":
     app()

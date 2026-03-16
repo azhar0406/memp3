@@ -1,0 +1,8 @@
+venv/
+.git/
+.github/
+.claude/
+__pycache__/
+*.flac
+*.pyc
+.pytest_cache/

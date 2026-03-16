@@ -1,107 +1,175 @@
-import uuid
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional
-from memp3.core.storage import StorageManager
+"""MCP server for memp3 — exposes memory tools via stdio transport."""
 
-app = FastAPI(title="memp3 MCP Server", description="AI memory encoded in sound")
-storage = StorageManager()
+import logging
 
-class MemoryContent(BaseModel):
-    content: str
-    tags: Optional[str] = None
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp.types import TextContent, Tool
 
-class MemoryResponse(BaseModel):
-    id: str
-    content: str
-    created_at: str
+from memp3.core.validators import ValidationError
 
-class SearchResponse(BaseModel):
-    results: List[MemoryResponse]
+logger = logging.getLogger(__name__)
 
-@app.get("/")
-async def root():
-    return {"message": "memp3 MCP server running", "version": "0.1.0"}
+server = Server("memp3")
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
 
-@app.post("/memories", response_model=MemoryResponse)
-async def create_memory(memory: MemoryContent):
-    """Create a new memory"""
+def _get_storage():
+    from memp3.core.storage import StorageManager
+    return StorageManager()
+
+
+@server.list_tools()
+async def list_tools() -> list[Tool]:
+    return [
+        Tool(
+            name="store_memory",
+            description="Encode text into a FLAC audio memory file. Returns the memory ID.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "The text content to store as audio memory",
+                    },
+                    "tags": {
+                        "type": "string",
+                        "description": "Optional comma-separated tags",
+                    },
+                },
+                "required": ["content"],
+            },
+        ),
+        Tool(
+            name="retrieve_memory",
+            description="Decode and retrieve a memory by its UUID.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "memory_id": {
+                        "type": "string",
+                        "description": "UUID of the memory to retrieve",
+                    },
+                },
+                "required": ["memory_id"],
+            },
+        ),
+        Tool(
+            name="search_memories",
+            description="Search memories by content substring match.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query string",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="list_memories",
+            description="List all stored memories with their IDs and content previews.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        Tool(
+            name="delete_memory",
+            description="Delete a memory by its UUID.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "memory_id": {
+                        "type": "string",
+                        "description": "UUID of the memory to delete",
+                    },
+                },
+                "required": ["memory_id"],
+            },
+        ),
+        Tool(
+            name="semantic_search",
+            description="Search memories by semantic similarity using embeddings. Requires sentence-transformers.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Natural language search query",
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "description": "Number of results to return (default 5)",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+    ]
+
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     try:
-        mem_id = storage.store(memory.content, memory.tags)
-        # Retrieve the created memory to get the full details
-        content = storage.retrieve(mem_id)
-        # Get metadata from database
-        import sqlite3
-        conn = sqlite3.connect(storage.db_path)
-        cursor = conn.cursor()
-        cursor.execute('SELECT created_at FROM memories WHERE id = ?', (mem_id,))
-        row = cursor.fetchone()
-        conn.close()
-        
-        return MemoryResponse(
-            id=mem_id,
-            content=content,
-            created_at=row[0] if row else ""
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        storage = _get_storage()
 
-@app.get("/memories/{mem_id}", response_model=MemoryResponse)
-async def get_memory(mem_id: str):
-    """Retrieve a memory by ID"""
-    try:
-        content = storage.retrieve(mem_id)
-        # Get metadata from database
-        import sqlite3
-        conn = sqlite3.connect(storage.db_path)
-        cursor = conn.cursor()
-        cursor.execute('SELECT created_at FROM memories WHERE id = ?', (mem_id,))
-        row = cursor.fetchone()
-        conn.close()
-        
-        if not row:
-            raise HTTPException(status_code=404, detail="Memory not found")
-            
-        return MemoryResponse(
-            id=mem_id,
-            content=content,
-            created_at=row[0]
-        )
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Memory not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        if name == "store_memory":
+            mem_id = storage.store(
+                arguments["content"], arguments.get("tags")
+            )
+            return [TextContent(type="text", text=f"Memory stored with ID: {mem_id}")]
 
-@app.get("/memories", response_model=SearchResponse)
-async def search_memories(query: str = ""):
-    """Search memories"""
-    try:
-        if query:
-            results = storage.search(query)
-        else:
+        elif name == "retrieve_memory":
+            content = storage.retrieve(arguments["memory_id"])
+            return [TextContent(type="text", text=content)]
+
+        elif name == "search_memories":
+            results = storage.search(arguments["query"])
+            if not results:
+                return [TextContent(type="text", text="No memories found.")]
+            lines = [f"Found {len(results)} memory(s):"]
+            for r in results:
+                lines.append(f"  {r['id']}: {r['content'][:80]}...")
+            return [TextContent(type="text", text="\n".join(lines))]
+
+        elif name == "list_memories":
             results = storage.list_all()
-            
-        memories = []
-        for result in results:
-            memories.append(MemoryResponse(
-                id=result['id'],
-                content=result['content'],
-                created_at=result['created_at']
-            ))
-            
-        return SearchResponse(results=memories)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            if not results:
+                return [TextContent(type="text", text="No memories stored.")]
+            lines = [f"Total: {len(results)} memory(s)"]
+            for r in results:
+                lines.append(f"  {r['id']}: {r['content'][:80]}...")
+            return [TextContent(type="text", text="\n".join(lines))]
 
-@app.delete("/memories/{mem_id}")
-async def delete_memory(mem_id: str):
-    """Delete a memory (not implemented in MVP)"""
-    raise HTTPException(status_code=501, detail="Not implemented")
+        elif name == "delete_memory":
+            storage.delete(arguments["memory_id"])
+            return [TextContent(type="text", text=f"Memory {arguments['memory_id']} deleted.")]
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=3141)
+        elif name == "semantic_search":
+            top_k = arguments.get("top_k", 5)
+            results = storage.semantic_search(arguments["query"], top_k=top_k)
+            if not results:
+                return [TextContent(type="text", text="No memories found.")]
+            lines = [f"Found {len(results)} result(s):"]
+            for r in results:
+                lines.append(f"  [{r['score']:.3f}] {r['id']}: {r['content'][:80]}...")
+            return [TextContent(type="text", text="\n".join(lines))]
+
+        else:
+            return [TextContent(type="text", text=f"Unknown tool: {name}")]
+
+    except ValidationError as e:
+        return [TextContent(type="text", text=f"Validation error: {e}")]
+    except KeyError as e:
+        return [TextContent(type="text", text=f"Not found: {e}")]
+    except Exception:
+        logger.exception("Error in tool %s", name)
+        return [TextContent(type="text", text="An internal error occurred. Check server logs.")]
+
+
+async def run_mcp_server():
+    """Run the MCP server on stdio."""
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(read_stream, write_stream, server.create_initialization_options())
