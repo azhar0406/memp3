@@ -162,16 +162,19 @@ def handle_message(msg):
         return
 
     if method == "initialize":
+        # Negotiate protocol version with client
+        client_version = msg.get("params", {}).get("protocolVersion", "2024-11-05")
+        logger.info("Client requested protocol version: %s", client_version)
         send({
             "jsonrpc": "2.0",
             "id": msg_id,
             "result": {
-                "protocolVersion": "2024-11-05",
+                "protocolVersion": client_version,
                 "capabilities": {"tools": {"listChanged": False}},
                 "serverInfo": {"name": "memp3", "version": "0.2.0"},
             },
         })
-        logger.info("Initialized")
+        logger.info("Initialized with protocol version %s", client_version)
 
     elif method == "tools/list":
         send({
