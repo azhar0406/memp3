@@ -93,7 +93,10 @@ def _get_storage():
         t0 = time.perf_counter()
         from memp3.core.storage import StorageManager
         _storage = StorageManager()
-        logger.info("StorageManager init: %.3fs", time.perf_counter() - t0)
+        # Pre-import heavy libs so first store_memory isn't slow
+        import numpy, scipy, soundfile
+        from memp3.core.encoder import BinaryEncoder
+        logger.info("StorageManager + libs init: %.3fs", time.perf_counter() - t0)
     return _storage
 
 
@@ -221,8 +224,23 @@ def handle_message(msg):
         })
 
 
+def _preload_libs():
+    """Pre-import heavy libraries in background thread so first tool call is fast."""
+    import threading
+
+    def _load():
+        t0 = time.perf_counter()
+        import numpy, scipy, soundfile  # noqa: F401
+        from memp3.core.encoder import BinaryEncoder  # noqa: F401
+        from memp3.core.ecc import ReedSolomonECC  # noqa: F401
+        logger.info("Pre-loaded libs in %.3fs", time.perf_counter() - t0)
+
+    threading.Thread(target=_load, daemon=True).start()
+
+
 def main():
     logger.info("=== memp3 MCP server starting (lightweight) ===")
+    _preload_libs()
 
     # Read from raw binary buffer — avoids Python's TextIOWrapper read-ahead
     # buffer which can delay message delivery by holding data in an internal
