@@ -6,15 +6,11 @@ Handles JSON-RPC directly over stdin/stdout without the heavy mcp SDK
 IMPORTANT: Uses sys.stdin.buffer.readline() instead of iterating sys.stdin
 to avoid Python's read-ahead buffer which causes messages to get stuck.
 """
-import io
 import json
 import logging
 import os
 import sys
 import time
-
-# Force unbuffered stdout so responses reach Claude Desktop immediately
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n", write_through=True)
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -156,10 +152,9 @@ def handle_tool_call(name, arguments):
 
 
 def send(msg):
-    """Write a JSON-RPC message to stdout — immediately flushed."""
-    data = json.dumps(msg)
-    sys.stdout.write(data + "\n")
-    sys.stdout.flush()
+    """Write a JSON-RPC message directly to fd 1 — zero buffering."""
+    data = json.dumps(msg) + "\n"
+    os.write(1, data.encode("utf-8"))
 
 
 def handle_message(msg):
