@@ -124,7 +124,9 @@ def handle_tool_call(name, arguments):
             return "\n".join(lines), False
 
         elif name == "delete_memory":
-            storage.delete(arguments["memory_id"])
+            deleted = storage.delete(arguments["memory_id"])
+            if deleted is False:
+                return f"Memory {arguments['memory_id']} was already deleted.", False
             return f"Memory {arguments['memory_id']} deleted.", False
 
         elif name == "semantic_search":

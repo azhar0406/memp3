@@ -38,8 +38,8 @@ class TestStorageManager:
             storage.retrieve(mem_id)
 
     def test_delete_not_found(self, storage):
-        with pytest.raises(KeyError):
-            storage.delete("00000000-0000-0000-0000-000000000000")
+        result = storage.delete("00000000-0000-0000-0000-000000000000")
+        assert result is False
 
     def test_get_info(self, storage):
         mem_id = storage.store("info test")

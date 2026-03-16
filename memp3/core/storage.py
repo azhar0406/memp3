@@ -163,14 +163,15 @@ class StorageManager:
         return [{"id": r[0], "content": r[1], "created_at": r[2]} for r in rows]
 
     def delete(self, mem_id):
-        """Delete a memory by ID."""
+        """Delete a memory by ID. Idempotent — returns True if deleted, False if not found."""
         mem_id = validate_memory_id(mem_id)
         conn = self._get_conn()
         row = conn.execute(
             "SELECT filename FROM memories WHERE id = ?", (mem_id,)
         ).fetchone()
         if not row:
-            raise KeyError(f"Memory {mem_id} not found")
+            logger.info("Memory %s already deleted or not found", mem_id)
+            return False
 
         filepath = os.path.join(self.memory_path, row[0])
         if os.path.exists(filepath):
