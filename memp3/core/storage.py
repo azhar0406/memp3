@@ -61,13 +61,17 @@ class StorageManager:
     def _get_conn(self):
         return self._conn
 
-    def _get_semantic(self):
+    def _get_semantic(self, required=False):
+        """Get semantic search instance. Only loads the model when required=True."""
         if self._semantic is None:
+            if not required:
+                return None
             try:
                 from memp3.core.search import SemanticSearch
                 self._semantic = SemanticSearch(self.base_path)
             except ImportError:
-                logger.debug("sentence-transformers/faiss not installed; semantic search disabled")
+                if required:
+                    raise RuntimeError("Semantic search requires sentence-transformers and faiss-cpu")
                 return None
         return self._semantic
 
@@ -105,7 +109,8 @@ class StorageManager:
         conn.commit()
         logger.info("Stored memory %s (%d bytes)", mem_id, len(content))
 
-        sem = self._get_semantic()
+        # Index for semantic search only if model is already loaded
+        sem = self._get_semantic(required=False)
         if sem is not None:
             sem.add(mem_id, content)
 
@@ -204,11 +209,17 @@ class StorageManager:
         }
 
     def semantic_search(self, query: str, top_k: int = 5) -> list[dict]:
-        """Search memories by semantic similarity."""
+        """Search memories by semantic similarity. Loads model on first call."""
         query = validate_query(query)
-        sem = self._get_semantic()
-        if sem is None:
-            raise RuntimeError("Semantic search requires sentence-transformers and faiss-cpu")
+        sem = self._get_semantic(required=True)
+
+        # Rebuild index if empty but DB has memories (lazy indexing)
+        if sem._index.ntotal == 0:
+            conn = self._get_conn()
+            rows = conn.execute("SELECT id, content FROM memories").fetchall()
+            for row in rows:
+                sem.add(row[0], row[1])
+
         results = sem.search(query, top_k=top_k)
         # Enrich with content from DB
         conn = self._get_conn()
