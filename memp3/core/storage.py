@@ -27,7 +27,7 @@ from memp3.core.validators import (
 
 logger = logging.getLogger(__name__)
 
-VECTOR_DIM = 384  # all-MiniLM-L6-v2 output dimension
+VECTOR_DIM = 384  # BAAI/bge-small-en-v1.5 output dimension
 
 
 def _signal_to_flac_blob(signal: np.ndarray, sample_rate: int) -> bytes:
@@ -167,19 +167,16 @@ class StorageManager:
         self._conn.commit()
 
     def _get_embedder(self):
-        """Lazy-load sentence-transformers model (offline — no HuggingFace HTTP calls)."""
+        """Lazy-load FastEmbed ONNX model — no PyTorch, 284MB RAM."""
         if self._embedder is None:
-            # Skip HuggingFace update checks — model is already cached locally
-            os.environ["HF_HUB_OFFLINE"] = "1"
-            os.environ["TRANSFORMERS_OFFLINE"] = "1"
-            from sentence_transformers import SentenceTransformer
-            self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
-            logger.info("Loaded embedding model: all-MiniLM-L6-v2 (offline)")
+            from fastembed import TextEmbedding
+            self._embedder = TextEmbedding("BAAI/bge-small-en-v1.5")
+            logger.info("Loaded embedding model: BAAI/bge-small-en-v1.5 (ONNX)")
         return self._embedder
 
     def _embed(self, text: str) -> list[float]:
         model = self._get_embedder()
-        vec = model.encode([text], normalize_embeddings=True)[0]
+        vec = list(model.embed([text]))[0]
         return vec.tolist()
 
     def close(self):
