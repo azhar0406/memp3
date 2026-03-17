@@ -114,6 +114,15 @@ class StorageManager:
 
         c.execute("CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at DESC)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_memories_tags ON memories(tags)")
+
+        # FTS5 virtual table for proper word-level search
+        c.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
+                id UNINDEXED, content, tags, content=memories, content_rowid=rowid
+            )
+        """)
+        # Sync FTS with existing data (idempotent)
+        c.execute("INSERT OR IGNORE INTO memories_fts(memories_fts) VALUES('rebuild')")
         self._conn.commit()
 
     def _get_semantic(self, required=False):
@@ -155,6 +164,12 @@ class StorageManager:
         self._conn.execute(
             "INSERT INTO memories (id, content, tags, encoder_version, flac_blob) VALUES (?,?,?,?,?)",
             (mem_id, content, tags, encoder_version, flac_blob),
+        )
+        # Sync FTS index
+        rowid = self._conn.execute("SELECT rowid FROM memories WHERE id=?", (mem_id,)).fetchone()[0]
+        self._conn.execute(
+            "INSERT INTO memories_fts(rowid, id, content, tags) VALUES (?,?,?,?)",
+            (rowid, mem_id, content, tags),
         )
         self._conn.commit()
         logger.info("Stored memory %s (%d bytes text, %d bytes FLAC)", mem_id, len(content), len(flac_blob))
@@ -209,11 +224,16 @@ class StorageManager:
         return encoder.decode(signal)
 
     def search(self, query):
-        """Search by content substring. Uses full table scan (LIKE can't use index)."""
+        """Search using FTS5 word matching. Finds any word from the query."""
         query = validate_query(query)
+        # Split query into words, match ANY word (OR logic)
+        words = query.strip().split()
+        if not words:
+            return []
+        fts_query = " OR ".join(f'"{w}"' for w in words)
         rows = self._conn.execute(
-            "SELECT id, content, created_at FROM memories WHERE content LIKE ? ORDER BY created_at DESC LIMIT 100",
-            (f"%{query}%",),
+            "SELECT m.id, m.content, m.created_at FROM memories_fts f JOIN memories m ON f.id = m.id WHERE memories_fts MATCH ? ORDER BY rank LIMIT 100",
+            (fts_query,),
         ).fetchall()
         return [{"id": r[0], "content": r[1], "created_at": r[2]} for r in rows]
 
@@ -228,10 +248,15 @@ class StorageManager:
     def delete(self, mem_id):
         """Delete by PRIMARY KEY — O(1)."""
         mem_id = validate_memory_id(mem_id)
-        row = self._conn.execute("SELECT 1 FROM memories WHERE id=?", (mem_id,)).fetchone()
+        row = self._conn.execute("SELECT rowid FROM memories WHERE id=?", (mem_id,)).fetchone()
         if not row:
             logger.info("Memory %s already deleted or not found", mem_id)
             return False
+        # Remove from FTS first (needs rowid)
+        self._conn.execute(
+            "INSERT INTO memories_fts(memories_fts, rowid, id, content, tags) VALUES('delete', ?, ?, (SELECT content FROM memories WHERE id=?), (SELECT tags FROM memories WHERE id=?))",
+            (row[0], mem_id, mem_id, mem_id),
+        )
         self._conn.execute("DELETE FROM memories WHERE id=?", (mem_id,))
         self._conn.commit()
         logger.info("Deleted memory %s", mem_id)
@@ -303,10 +328,15 @@ class StorageManager:
         query = validate_query(query)
         sem = self._get_semantic(required=True)
 
-        if sem._index.ntotal == 0:
+        # Sync FAISS index with DB — rebuild if counts don't match
+        db_count = self._conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+        if sem._index.ntotal != db_count:
+            sem._index.reset()
+            sem._ids.clear()
             rows = self._conn.execute("SELECT id, content FROM memories").fetchall()
             for row in rows:
                 sem.add(row[0], row[1])
+            logger.info("Rebuilt FAISS index: %d entries", db_count)
 
         results = sem.search(query, top_k=top_k)
         enriched = []
