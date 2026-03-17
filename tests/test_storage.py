@@ -47,8 +47,8 @@ class TestStorageManager:
         assert info["id"] == mem_id
         assert info["content_length"] == len("info test")
         assert info["encoder_version"] == 2
-        assert info["pcm_blob_bytes"] > 0
-        assert info["storage"] == "pcm_blob"
+        assert info["flac_bytes"] > 0
+        assert info["storage"] == "flac_blob"
 
     def test_stats(self, storage):
         storage.store("one")
@@ -56,7 +56,7 @@ class TestStorageManager:
         s = storage.stats()
         assert s["total_memories"] == 2
         assert s["total_content_bytes"] > 0
-        assert s["total_pcm_bytes"] > 0
+        assert s["total_flac_bytes"] > 0
 
     def test_validation_bad_id(self, storage):
         with pytest.raises(ValidationError):
