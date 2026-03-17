@@ -58,6 +58,24 @@ def search(
         raise typer.Exit(code=1)
 
 
+@app.command(name="tag-search")
+def tag_search(
+    tag: str = typer.Argument(..., help="Tag to search for"),
+):
+    """Search memories by tag"""
+    try:
+        results = _get_storage().search_by_tag(tag)
+        if not results:
+            typer.echo(f"No memories with tag '{tag}'")
+            return
+        typer.echo(f"Found {len(results)} memory(s) with tag '{tag}':")
+        for r in results:
+            typer.echo(f"  {r['id']}: {r['content'][:50]}... [tags: {r.get('tags', '')}]")
+    except Exception as e:
+        typer.echo(f"Error: {e}")
+        raise typer.Exit(code=1)
+
+
 @app.command(name="list")
 def list_memories():
     """List all memories"""

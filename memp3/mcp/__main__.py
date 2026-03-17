@@ -82,6 +82,17 @@ TOOLS = [
             "required": ["query"],
         },
     },
+    {
+        "name": "search_by_tag",
+        "description": "Search memories by tag. Finds memories with a specific tag.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "tag": {"type": "string", "description": "Tag to search for (e.g. 'meeting', 'wedding')"},
+            },
+            "required": ["tag"],
+        },
+    },
 ]
 
 _storage = None
@@ -95,7 +106,7 @@ def _get_storage():
         _storage = StorageManager()
         # Pre-import heavy libs so first store_memory isn't slow
         import numpy, scipy, soundfile  # noqa: F401
-        from memp3.core.encoder import BinaryEncoder  # noqa: F401
+        from memp3.core.multichannel import MultiChannelEncoder  # noqa: F401
         logger.info("Storage init: %.3fs", time.perf_counter() - t0)
     return _storage
 
@@ -144,6 +155,15 @@ def handle_tool_call(name, arguments):
             lines = [f"Found {len(results)} result(s):"]
             for r in results:
                 lines.append(f"  [{r['score']:.3f}] {r['id']}: {r['content'][:80]}...")
+            return "\n".join(lines), False
+
+        elif name == "search_by_tag":
+            results = storage.search_by_tag(arguments["tag"])
+            if not results:
+                return f"No memories with tag '{arguments['tag']}'.", False
+            lines = [f"Found {len(results)} memory(s) tagged '{arguments['tag']}':"]
+            for r in results:
+                lines.append(f"  {r['id']}: {r['content'][:80]}... [tags: {r.get('tags', '')}]")
             return "\n".join(lines), False
 
         else:
@@ -231,7 +251,7 @@ def _preload_libs():
     def _load():
         t0 = time.perf_counter()
         import numpy, scipy, soundfile  # noqa: F401
-        from memp3.core.encoder import BinaryEncoder  # noqa: F401
+        from memp3.core.multichannel import MultiChannelEncoder  # noqa: F401
         from memp3.core.ecc import ReedSolomonECC  # noqa: F401
         # Pre-load FastEmbed ONNX model so first semantic_search is fast
         try:

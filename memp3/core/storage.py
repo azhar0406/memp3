@@ -185,19 +185,20 @@ class StorageManager:
             self._conn = None
 
     def store(self, content, tags=None, encoder_version=3):
-        """Store content as FLAC audio blob + optional vector embedding."""
+        """Store content as FLAC audio blob + optional vector embedding.
+
+        Encoder v3 (multi-channel OFDM) is the only supported version for new memories.
+        v1/v2 are deprecated — existing memories still decode but new stores use v3.
+        """
         content = validate_content(content)
         tags = validate_tags(tags)
 
-        if encoder_version == 3:
-            from memp3.core.multichannel import MultiChannelEncoder
-            encoder = MultiChannelEncoder()
-        elif encoder_version == 2:
-            from memp3.core.encoder import BinaryEncoder
-            encoder = BinaryEncoder()
-        else:
-            from memp3.core.encoder import SimpleEncoder
-            encoder = SimpleEncoder()
+        if encoder_version != 3:
+            logger.warning("Encoder v%d is deprecated, using v3 (multi-channel)", encoder_version)
+            encoder_version = 3
+
+        from memp3.core.multichannel import MultiChannelEncoder
+        encoder = MultiChannelEncoder()
 
         signal = encoder.encode(content)
         flac_blob = _signal_to_flac_blob(signal, encoder.sample_rate)
@@ -256,17 +257,26 @@ class StorageManager:
         return encoder.decode(signal)
 
     def search(self, query):
-        """FTS5 word search — matches any word from the query."""
+        """FTS5 word search — matches any word from the query in content AND tags."""
         query = validate_query(query)
         words = query.strip().split()
         if not words:
             return []
         fts_query = " OR ".join(f'"{w}"' for w in words)
         rows = self._conn.execute(
-            "SELECT m.id, m.content, m.created_at FROM memories_fts f JOIN memories m ON f.id = m.id WHERE memories_fts MATCH ? ORDER BY rank LIMIT 100",
+            "SELECT m.id, m.content, m.created_at, m.tags FROM memories_fts f JOIN memories m ON f.id = m.id WHERE memories_fts MATCH ? ORDER BY rank LIMIT 100",
             (fts_query,),
         ).fetchall()
-        return [{"id": r[0], "content": r[1], "created_at": r[2]} for r in rows]
+        return [{"id": r[0], "content": r[1], "created_at": r[2], "tags": r[3]} for r in rows]
+
+    def search_by_tag(self, tag):
+        """Search memories by exact tag match. Uses idx_memories_tags index."""
+        tag = validate_query(tag).strip().lower()
+        rows = self._conn.execute(
+            "SELECT id, content, created_at, tags FROM memories WHERE LOWER(tags) LIKE ? ORDER BY created_at DESC LIMIT 100",
+            (f"%{tag}%",),
+        ).fetchall()
+        return [{"id": r[0], "content": r[1], "created_at": r[2], "tags": r[3]} for r in rows]
 
     def list_all(self, limit=100, offset=0):
         """List with pagination — uses idx_memories_created."""
