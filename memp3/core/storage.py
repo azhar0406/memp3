@@ -348,10 +348,32 @@ class StorageManager:
         # Embed query
         query_vec = json.dumps(self._embed(query))
 
-        # Backfill embeddings for rows that don't have them yet
-        rows_without = self._conn.execute(
-            "SELECT id, content FROM memories WHERE embedding IS NULL"
-        ).fetchall()
+        # Backfill/re-embed: rows without embeddings OR stale embeddings from old model
+        # Check if embeddings need rebuild (model switch detection)
+        meta_table = self._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='memp3_meta'"
+        ).fetchone()
+        current_model = "BAAI/bge-small-en-v1.5"
+        needs_reembed = False
+
+        if not meta_table:
+            self._conn.execute("CREATE TABLE memp3_meta (key TEXT PRIMARY KEY, value TEXT)")
+            self._conn.execute("INSERT INTO memp3_meta VALUES ('embed_model', ?)", (current_model,))
+            self._conn.commit()
+            needs_reembed = True
+        else:
+            row = self._conn.execute("SELECT value FROM memp3_meta WHERE key='embed_model'").fetchone()
+            if not row or row[0] != current_model:
+                self._conn.execute("INSERT OR REPLACE INTO memp3_meta VALUES ('embed_model', ?)", (current_model,))
+                self._conn.commit()
+                needs_reembed = True
+
+        if needs_reembed:
+            rows_without = self._conn.execute("SELECT id, content FROM memories").fetchall()
+        else:
+            rows_without = self._conn.execute(
+                "SELECT id, content FROM memories WHERE embedding IS NULL"
+            ).fetchall()
         if rows_without:
             for row_id, row_content in rows_without:
                 vec = self._embed(row_content)
