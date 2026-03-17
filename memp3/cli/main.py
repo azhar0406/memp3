@@ -200,5 +200,28 @@ def serve(
     uvicorn.run(rest_app, host=host, port=port, log_level="info")
 
 
+@app.command(name="serve-api")
+def serve_api(
+    host: str = typer.Option("0.0.0.0", help="Host to bind"),
+    port: int = typer.Option(8000, help="Port to bind"),
+):
+    """Start multi-tenant SaaS API server"""
+    import uvicorn
+    from memp3.api.server import app as api_app
+    typer.echo(f"Starting memp3 SaaS API on {host}:{port}")
+    uvicorn.run(api_app, host=host, port=port, log_level="info")
+
+
+@app.command(name="create-key")
+def create_key(
+    user_id: str = typer.Argument(..., help="User ID to create key for"),
+):
+    """Create an API key for a user"""
+    from memp3.api.auth import create_api_key
+    key = create_api_key(user_id)
+    typer.echo(f"API key for {user_id}: {key}")
+    typer.echo("Save this key — it won't be shown again.")
+
+
 if __name__ == "__main__":
     app()
