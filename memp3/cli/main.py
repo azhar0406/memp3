@@ -1,10 +1,17 @@
+import os
 import typer
 from typing import Optional
 
 app = typer.Typer()
 
+# Set MEMP3_BACKEND=wav to use WAV append storage, default is sqlite
+BACKEND = os.environ.get("MEMP3_BACKEND", "sqlite")
+
 
 def _get_storage():
+    if BACKEND == "wav":
+        from memp3.core.wav_storage import WavStreamStorage
+        return WavStreamStorage()
     from memp3.core.storage import StorageManager
     return StorageManager()
 

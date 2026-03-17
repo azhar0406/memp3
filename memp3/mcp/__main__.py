@@ -91,12 +91,18 @@ def _get_storage():
     global _storage
     if _storage is None:
         t0 = time.perf_counter()
-        from memp3.core.storage import StorageManager
-        _storage = StorageManager()
+        backend = os.environ.get("MEMP3_BACKEND", "sqlite")
+        if backend == "wav":
+            from memp3.core.wav_storage import WavStreamStorage
+            _storage = WavStreamStorage()
+            logger.info("WAV storage init: %.3fs", time.perf_counter() - t0)
+        else:
+            from memp3.core.storage import StorageManager
+            _storage = StorageManager()
+            logger.info("SQLite storage init: %.3fs", time.perf_counter() - t0)
         # Pre-import heavy libs so first store_memory isn't slow
-        import numpy, scipy, soundfile
-        from memp3.core.encoder import BinaryEncoder
-        logger.info("StorageManager + libs init: %.3fs", time.perf_counter() - t0)
+        import numpy, scipy, soundfile  # noqa: F401
+        from memp3.core.encoder import BinaryEncoder  # noqa: F401
     return _storage
 
 
