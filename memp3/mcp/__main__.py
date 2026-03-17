@@ -230,9 +230,18 @@ def _preload_libs():
 
     def _load():
         t0 = time.perf_counter()
+        # Skip HuggingFace HTTP update checks
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
         import numpy, scipy, soundfile  # noqa: F401
         from memp3.core.encoder import BinaryEncoder  # noqa: F401
         from memp3.core.ecc import ReedSolomonECC  # noqa: F401
+        # Pre-load embedding model so first semantic_search isn't 13s
+        try:
+            from sentence_transformers import SentenceTransformer
+            SentenceTransformer("all-MiniLM-L6-v2")
+        except Exception:
+            pass  # optional dependency
         logger.info("Pre-loaded libs in %.3fs", time.perf_counter() - t0)
 
     threading.Thread(target=_load, daemon=True).start()

@@ -167,11 +167,14 @@ class StorageManager:
         self._conn.commit()
 
     def _get_embedder(self):
-        """Lazy-load sentence-transformers model."""
+        """Lazy-load sentence-transformers model (offline — no HuggingFace HTTP calls)."""
         if self._embedder is None:
+            # Skip HuggingFace update checks — model is already cached locally
+            os.environ["HF_HUB_OFFLINE"] = "1"
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
             from sentence_transformers import SentenceTransformer
             self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
-            logger.info("Loaded embedding model: all-MiniLM-L6-v2")
+            logger.info("Loaded embedding model: all-MiniLM-L6-v2 (offline)")
         return self._embedder
 
     def _embed(self, text: str) -> list[float]:
