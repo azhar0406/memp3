@@ -57,7 +57,7 @@ class StorageManager:
 
         os.makedirs(base_path, exist_ok=True)
 
-        self._conn = sqlite3.connect(self.db_path)
+        self._conn = sqlite3.connect(self.db_path, timeout=10)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA synchronous=NORMAL")
         self._conn.execute("PRAGMA cache_size=-8000")  # 8MB page cache
@@ -68,25 +68,52 @@ class StorageManager:
 
     def _init_db(self):
         c = self._conn.cursor()
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS memories (
-                id TEXT PRIMARY KEY,
-                content TEXT NOT NULL,
-                tags TEXT,
-                encoder_version INTEGER DEFAULT 2,
-                flac_blob BLOB,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+
+        # Check if table exists and needs migration
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memories'")
+        table_exists = c.fetchone() is not None
+
+        if table_exists:
+            c.execute("PRAGMA table_info(memories)")
+            columns = [row[1] for row in c.fetchall()]
+
+            if "flac_blob" not in columns:
+                c.execute("ALTER TABLE memories ADD COLUMN flac_blob BLOB")
+                logger.info("Migrated schema: added flac_blob column")
+
+            # Rebuild table to drop old NOT NULL constraints on filename
+            if "filename" in columns:
+                c.execute("""
+                    CREATE TABLE IF NOT EXISTS memories_new (
+                        id TEXT PRIMARY KEY,
+                        content TEXT NOT NULL,
+                        tags TEXT,
+                        encoder_version INTEGER DEFAULT 2,
+                        flac_blob BLOB,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                c.execute("""
+                    INSERT OR IGNORE INTO memories_new (id, content, tags, encoder_version, flac_blob, created_at)
+                    SELECT id, content, tags, encoder_version, flac_blob, created_at FROM memories
+                """)
+                c.execute("DROP TABLE memories")
+                c.execute("ALTER TABLE memories_new RENAME TO memories")
+                logger.info("Migrated schema: rebuilt table, dropped filename column")
+        else:
+            c.execute("""
+                CREATE TABLE memories (
+                    id TEXT PRIMARY KEY,
+                    content TEXT NOT NULL,
+                    tags TEXT,
+                    encoder_version INTEGER DEFAULT 2,
+                    flac_blob BLOB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
         c.execute("CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at DESC)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_memories_tags ON memories(tags)")
-
-        # Migration: add flac_blob if upgrading from older schema
-        c.execute("PRAGMA table_info(memories)")
-        columns = [row[1] for row in c.fetchall()]
-        if "flac_blob" not in columns:
-            c.execute("ALTER TABLE memories ADD COLUMN flac_blob BLOB")
-            logger.info("Migrated schema: added flac_blob column")
         self._conn.commit()
 
     def _get_semantic(self, required=False):
