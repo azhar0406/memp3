@@ -120,6 +120,34 @@ def stats():
         raise typer.Exit(code=1)
 
 
+@app.command(name="export-flac")
+def export_flac(
+    mem_id: str = typer.Argument(..., help="Memory ID to export"),
+    output: Optional[str] = typer.Option(None, "-o", "--output", help="Output file path"),
+):
+    """Export a memory as a FLAC file (lossless compressed)"""
+    try:
+        path = _get_storage().export_flac(mem_id, output)
+        typer.echo(f"Exported to: {path}")
+    except KeyError:
+        typer.echo(f"Memory {mem_id} not found")
+        raise typer.Exit(code=1)
+
+
+@app.command(name="export-wav")
+def export_wav(
+    mem_id: str = typer.Argument(..., help="Memory ID to export"),
+    output: Optional[str] = typer.Option(None, "-o", "--output", help="Output file path"),
+):
+    """Export a memory as a WAV file (lossless uncompressed)"""
+    try:
+        path = _get_storage().export_wav(mem_id, output)
+        typer.echo(f"Exported to: {path}")
+    except KeyError:
+        typer.echo(f"Memory {mem_id} not found")
+        raise typer.Exit(code=1)
+
+
 @app.command(name="semantic-search")
 def semantic_search(
     query: str = typer.Argument(..., help="Semantic search query"),
