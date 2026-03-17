@@ -183,25 +183,13 @@ def mcp():
 
 @app.command()
 def serve(
-    host: str = typer.Option("127.0.0.1", help="Host to bind the REST server to"),
-    port: int = typer.Option(3141, help="Port to bind the REST server to"),
-):
-    """Start REST API server"""
-    import uvicorn
-    from memp3.mcp.rest import app as rest_app
-    typer.echo(f"Starting REST server on {host}:{port}")
-    uvicorn.run(rest_app, host=host, port=port, log_level="info")
-
-
-@app.command(name="serve-api")
-def serve_api(
     host: str = typer.Option("0.0.0.0", help="Host to bind"),
     port: int = typer.Option(8000, help="Port to bind"),
 ):
-    """Start multi-tenant SaaS API server"""
+    """Start REST API server"""
     import uvicorn
     from memp3.api.server import app as api_app
-    typer.echo(f"Starting memp3 SaaS API on {host}:{port}")
+    typer.echo(f"Starting memp3 API on {host}:{port}")
     uvicorn.run(api_app, host=host, port=port, log_level="info")
 
 

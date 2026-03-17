@@ -184,12 +184,15 @@ class StorageManager:
             self._conn.close()
             self._conn = None
 
-    def store(self, content, tags=None, encoder_version=2):
+    def store(self, content, tags=None, encoder_version=3):
         """Store content as FLAC audio blob + optional vector embedding."""
         content = validate_content(content)
         tags = validate_tags(tags)
 
-        if encoder_version == 2:
+        if encoder_version == 3:
+            from memp3.core.multichannel import MultiChannelEncoder
+            encoder = MultiChannelEncoder()
+        elif encoder_version == 2:
             from memp3.core.encoder import BinaryEncoder
             encoder = BinaryEncoder()
         else:
@@ -240,7 +243,10 @@ class StorageManager:
 
         signal, sample_rate = _flac_blob_to_signal(flac_blob)
 
-        if enc_ver == 2:
+        if enc_ver == 3:
+            from memp3.core.multichannel import MultiChannelEncoder
+            encoder = MultiChannelEncoder(sample_rate=sample_rate)
+        elif enc_ver == 2:
             from memp3.core.encoder import BinaryEncoder
             encoder = BinaryEncoder(sample_rate=sample_rate)
         else:

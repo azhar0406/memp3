@@ -46,7 +46,7 @@ class TestStorageManager:
         info = storage.get_info(mem_id)
         assert info["id"] == mem_id
         assert info["content_length"] == len("info test")
-        assert info["encoder_version"] == 2
+        assert info["encoder_version"] == 3
         assert info["flac_bytes"] > 0
         assert info["storage"] == "flac_blob"
 

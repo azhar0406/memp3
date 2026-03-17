@@ -1,36 +1,40 @@
-# memp3 - MVP
+# memp3
 
 **AI memory encoded in sound. Lossless, fast, and hardware-adaptive.**
 
-`memp3` is a cutting-edge AI memory system that compresses and stores textual knowledge into FLAC audio files.
+memp3 encodes text into FLAC audio files with Reed-Solomon error correction, stores them in SQLite, and provides semantic search via MCP for Claude Desktop.
 
-## 🚀 MVP Features
+## Architecture
 
-- 🔊 **Text-to-FLAC Encoding**: Encodes text to audio memory
-- ⚡ **Fast Retrieval**: Retrieves memories by ID
-- 📦 **File Storage**: Stores memories as FLAC files
-- 🔎 **Basic Search**: Searches memories by content
-- 🌐 **MCP Ready**: Integrates with Claude Desktop
+```
+Text  -->  zlib compress  -->  Reed-Solomon ECC  -->  Frequency encoding (200-4000Hz)
+      -->  FLAC compress  -->  SQLite blob storage
 
-## 🔧 Tech Stack (MVP)
-
-- **Languages**: Python 3.11+
-- **Audio**: soundfile, numpy, scipy
-- **Storage**: File system + SQLite
-- **API**: FastAPI, Uvicorn
-- **CLI**: Typer
-
-## 📦 Installation
-
-```bash
-# Install with pip (development version)
-pip install -e .
-
-# Eventually will support:
-# uv tool install memp3
+Search: FTS5 (word match) + FastEmbed ONNX + sqlite-vector (semantic similarity)
 ```
 
-## 🔧 Claude Desktop Integration (MCP)
+Everything lives in one SQLite database per user. No external services, no separate index files.
+
+## Performance
+
+| Operation | Time |
+|-----------|------|
+| Store memory | 67ms |
+| Retrieve memory | 15ms |
+| Word search (FTS5) | <1ms |
+| Semantic search | 150ms |
+| MCP server cold start | 127ms |
+
+## Installation
+
+```bash
+pip install -e .
+
+# With semantic search support
+pip install -e ".[search]"
+```
+
+## Claude Desktop Integration
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -38,65 +42,126 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "memp3": {
-      "command": "memp3",
-      "args": [
-        "mcp"
-      ]
+      "command": "/path/to/venv/bin/python",
+      "args": ["-u", "-m", "memp3.mcp"]
     }
   }
 }
 ```
 
-Then start the MCP server:
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `store_memory` | Encode text into FLAC audio. Returns memory ID |
+| `retrieve_memory` | Decode audio back to text by UUID |
+| `search_memories` | FTS5 word-level search (any word matches) |
+| `semantic_search` | Meaning-based search via embeddings |
+| `list_memories` | List all stored memories |
+| `delete_memory` | Delete a memory by UUID |
+
+## CLI
+
 ```bash
-memp3 mcp
-```
-
-## 🔍 CLI Usage
-
-```bash
-# Encode text to audio memory
-memp3 encode "Hello World" --tags "greeting"
-
-# Decode audio memory to text
+# Store and retrieve
+memp3 encode "Meeting at 3pm in Thane" --tags "meeting,thane"
 memp3 decode <memory-id>
 
-# Search memories
-memp3 search "Hello"
+# Search
+memp3 search "meeting"
+memp3 semantic-search "schedule appointment"
 
-# List all memories
+# Manage
 memp3 list
+memp3 delete <memory-id>
+memp3 info <memory-id>
+memp3 stats
 
-# Start MCP server
-memp3 mcp
+# Export
+memp3 export-flac <memory-id>
+memp3 export-wav <memory-id>
+
+# Servers
+memp3 mcp          # MCP stdio server (Claude Desktop)
+memp3 serve        # REST API server
 ```
 
-## 🌐 MCP API Endpoints
+## REST API
 
-Once the MCP server is running, you can interact with it via REST API:
-
-- `POST /memories` - Create a new memory
-- `GET /memories/{id}` - Retrieve a memory by ID
-- `GET /memories` - Search memories
-- `GET /health` - Health check
-
-Example:
 ```bash
-# Create a memory
-curl -X POST http://127.0.0.1:3141/memories \
-  -H "Content-Type: application/json" \
-  -d '{"content": "This is a test memory", "tags": "test"}'
+# Start server
+memp3 serve
 
-# Retrieve a memory
-curl -X GET http://127.0.0.1:3141/memories/<memory-id>
+# Create API key
+memp3 create-key alice
+
+# Use API
+curl -X POST http://localhost:8000/memories \
+  -H "Authorization: Bearer memp3_xxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Meeting at 3pm", "tags": "meeting"}'
+
+curl http://localhost:8000/memories?query=meeting \
+  -H "Authorization: Bearer memp3_xxxx"
 ```
 
-## 📜 License
+## How It Works
 
-MIT License. See [`LICENSE`](./LICENSE) for details.
+### Encoding Pipeline
 
----
+```
+"Hello World"
+    |
+    v
+UTF-8 bytes --> zlib compress --> Reed-Solomon ECC (14% redundancy)
+    |
+    v
+CRC32 header (magic + version + length + checksum)
+    |
+    v
+Frequency mapping: each byte -> 200-4000Hz tone (256 slots)
+    |
+    v
+48kHz audio signal with Hann windowing (reduces spectral leakage)
+    |
+    v
+FLAC lossless compression --> SQLite blob
+```
 
-### 💡 Why the name "memp3"?
+### Search
 
-A play on "memory" + "MP3" — `memp3` encodes structured memory into audio.
+- **FTS5**: Word-level matching. "Lakshya wedding" finds "Lakshya is getting married" because "Lakshya" matches.
+- **Semantic**: FastEmbed (ONNX) generates 384-dim embeddings, sqlite-vector does cosine similarity. "motorcycle" finds "bike" (0.837 score).
+
+### Error Correction
+
+Reed-Solomon RS(255,223) recovers the original text even if 5% of audio samples are corrupted.
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Audio encoding | numpy, scipy, soundfile |
+| Error correction | reedsolo (Reed-Solomon) |
+| Storage | SQLite (WAL mode, FLAC blobs) |
+| Word search | SQLite FTS5 |
+| Semantic search | FastEmbed (ONNX) + sqlite-vector |
+| MCP server | Lightweight JSON-RPC over stdio |
+| REST API | FastAPI |
+| CLI | Typer |
+
+## Multi-tenant SaaS
+
+Per-user isolation with API key auth:
+
+```
+/data/memp3/users/
+  alice/index.db    <-- all of Alice's memories
+  bob/index.db      <-- all of Bob's memories
+```
+
+Delete user = delete their folder. No shared database.
+
+## License
+
+MIT
