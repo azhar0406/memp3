@@ -29,17 +29,27 @@ SCHEMA_VERSION = 3
 
 
 def _signal_to_blob(signal: np.ndarray, sample_rate: int) -> bytes:
-    """Pack float64 signal + sample_rate into a compact blob."""
-    # Convert to float32 to halve storage (no audible difference for our freq range)
-    f32 = signal.astype(np.float32)
-    header = struct.pack("<I", sample_rate)  # 4 bytes: sample rate
-    return header + f32.tobytes()
+    """Encode signal as FLAC bytes in memory — best compression, no file I/O."""
+    import io
+    import soundfile as sf
+    import tempfile
+    # soundfile can't write FLAC to BytesIO reliably, use a temp file
+    fp = tempfile.mktemp(suffix=".flac")
+    try:
+        sf.write(fp, signal, sample_rate)
+        with open(fp, "rb") as f:
+            return f.read()
+    finally:
+        if os.path.exists(fp):
+            os.remove(fp)
 
 
 def _blob_to_signal(blob: bytes) -> tuple[np.ndarray, int]:
-    """Unpack blob back to signal + sample_rate."""
-    sample_rate = struct.unpack("<I", blob[:4])[0]
-    signal = np.frombuffer(blob[4:], dtype=np.float32).astype(np.float64)
+    """Decode FLAC bytes back to signal + sample_rate — from memory, no file I/O."""
+    import io
+    import soundfile as sf
+    buf = io.BytesIO(blob)
+    signal, sample_rate = sf.read(buf)
     return signal, sample_rate
 
 
