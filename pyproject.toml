@@ -32,6 +32,10 @@ dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
 ]
+benchmark = [
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+]
 
 [project.scripts]
 memp3 = "memp3.cli.main:app"

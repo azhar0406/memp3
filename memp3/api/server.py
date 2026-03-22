@@ -1,6 +1,6 @@
 """Multi-tenant REST API for memp3 SaaS.
 
-Each user gets isolated WAV storage in their own folder.
+Each user gets isolated storage in their own folder.
 Authentication via API key in Authorization header.
 """
 
@@ -8,11 +8,11 @@ import logging
 import os
 from functools import lru_cache
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from memp3.api.auth import verify_api_key
-from memp3.core.wav_storage import WavStreamStorage
+from memp3.core.storage import StorageManager
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,9 @@ app = FastAPI(
 # --- Storage per user (cached) ---
 
 @lru_cache(maxsize=128)
-def _get_user_storage(user_id: str) -> WavStreamStorage:
+def _get_user_storage(user_id: str) -> StorageManager:
     user_path = os.path.join(DATA_ROOT, "users", user_id)
-    return WavStreamStorage(base_path=user_path)
+    return StorageManager(base_path=user_path)
 
 
 # --- Auth dependency ---
@@ -46,7 +46,7 @@ async def get_current_user(authorization: str = Header(...)) -> str:
     return user_id
 
 
-async def get_storage(user_id: str = Depends(get_current_user)) -> WavStreamStorage:
+async def get_storage(user_id: str = Depends(get_current_user)) -> StorageManager:
     """Get the user's isolated storage instance."""
     return _get_user_storage(user_id)
 
@@ -56,6 +56,7 @@ async def get_storage(user_id: str = Depends(get_current_user)) -> WavStreamStor
 class StoreRequest(BaseModel):
     content: str
     tags: str | None = None
+    document_date: str | None = None
 
 
 class MemoryResponse(BaseModel):
@@ -63,14 +64,10 @@ class MemoryResponse(BaseModel):
     content: str
 
 
-class SearchRequest(BaseModel):
-    query: str
-
-
 class StatsResponse(BaseModel):
     total_memories: int
     total_content_bytes: int
-    wav_file_bytes: int
+    total_flac_bytes: int
 
 
 # --- Endpoints ---
@@ -88,11 +85,11 @@ async def health():
 @app.post("/memories", response_model=MemoryResponse)
 async def store_memory(
     req: StoreRequest,
-    storage: WavStreamStorage = Depends(get_storage),
+    storage: StorageManager = Depends(get_storage),
 ):
     """Store a new memory."""
     try:
-        mem_id = storage.store(req.content, req.tags)
+        mem_id = storage.store(req.content, req.tags, document_date=req.document_date)
         return MemoryResponse(id=mem_id, content=req.content)
     except Exception:
         logger.exception("Error storing memory")
@@ -102,7 +99,7 @@ async def store_memory(
 @app.get("/memories/{mem_id}")
 async def retrieve_memory(
     mem_id: str,
-    storage: WavStreamStorage = Depends(get_storage),
+    storage: StorageManager = Depends(get_storage),
 ):
     """Retrieve a memory by ID (decodes from audio)."""
     try:
@@ -118,9 +115,9 @@ async def retrieve_memory(
 @app.get("/memories")
 async def list_memories(
     query: str = "",
-    storage: WavStreamStorage = Depends(get_storage),
+    storage: StorageManager = Depends(get_storage),
 ):
-    """List or search memories."""
+    """List or search memories (FTS5 word search)."""
     try:
         if query:
             results = storage.search(query)
@@ -132,10 +129,43 @@ async def list_memories(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@app.get("/memories/semantic")
+async def semantic_search(
+    query: str = Query(..., description="Search query"),
+    top_k: int = Query(5, description="Number of results"),
+    storage: StorageManager = Depends(get_storage),
+):
+    """Semantic search using embeddings (cosine similarity)."""
+    try:
+        results = storage.semantic_search(query, top_k=top_k)
+        return {"results": results}
+    except RuntimeError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception:
+        logger.exception("Error in semantic search")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/memories/temporal")
+async def temporal_search_endpoint(
+    start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
+    end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
+    top_k: int = Query(10, description="Number of results"),
+    storage: StorageManager = Depends(get_storage),
+):
+    """Search memories by event date range."""
+    try:
+        results = storage.temporal_search(start_date, end_date, top_k=top_k)
+        return {"results": results}
+    except Exception:
+        logger.exception("Error in temporal search")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.delete("/memories/{mem_id}")
 async def delete_memory(
     mem_id: str,
-    storage: WavStreamStorage = Depends(get_storage),
+    storage: StorageManager = Depends(get_storage),
 ):
     """Delete a memory."""
     try:
@@ -148,14 +178,14 @@ async def delete_memory(
 
 @app.get("/stats", response_model=StatsResponse)
 async def get_stats(
-    storage: WavStreamStorage = Depends(get_storage),
+    storage: StorageManager = Depends(get_storage),
 ):
     """Get storage statistics for the current user."""
     s = storage.stats()
     return StatsResponse(
         total_memories=s["total_memories"],
         total_content_bytes=s["total_content_bytes"],
-        wav_file_bytes=s["wav_file_bytes"],
+        total_flac_bytes=s["total_flac_bytes"],
     )
 
 
@@ -163,7 +193,7 @@ async def get_stats(
 async def export_memory(
     mem_id: str,
     format: str = "flac",
-    storage: WavStreamStorage = Depends(get_storage),
+    storage: StorageManager = Depends(get_storage),
 ):
     """Export a memory as a downloadable audio file."""
     from fastapi.responses import FileResponse

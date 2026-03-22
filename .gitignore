@@ -142,3 +142,12 @@ Thumbs.db
 # Custom ignores for memp3
 memory_storage/
 *.flac
+
+# Benchmark data & results
+benchmarks/data/
+benchmarks/results/
+benchmarks/checkpoints/
+
+# MemoryBench provider
+memorybench-provider/node_modules/
+memorybench-provider/dist/

@@ -51,6 +51,10 @@ async def list_tools() -> list[Tool]:
                         "type": "string",
                         "description": "Optional comma-separated tags",
                     },
+                    "document_date": {
+                        "type": "string",
+                        "description": "When the conversation occurred (e.g. 2025-03-22)",
+                    },
                 },
                 "required": ["content"],
             },
@@ -107,7 +111,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="semantic_search",
-            description="Search memories by semantic similarity using embeddings. Requires sentence-transformers.",
+            description="Search memories by semantic similarity using embeddings.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -136,7 +140,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         if name == "store_memory":
             mem_id = storage.store(
-                arguments["content"], arguments.get("tags")
+                arguments["content"], arguments.get("tags"),
+                document_date=arguments.get("document_date"),
             )
             result = [TextContent(type="text", text=f"Memory stored with ID: {mem_id}")]
 
