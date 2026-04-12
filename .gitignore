@@ -139,7 +139,7 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Custom ignores for memp3
+# Custom ignores for memdio
 memory_storage/
 *.flac
 

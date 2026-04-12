@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from memp3.core.encoder import BinaryEncoder, SimpleEncoder
+from memdio.core.encoder import BinaryEncoder, SimpleEncoder
 
 
 class TestSimpleEncoder:

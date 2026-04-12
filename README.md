@@ -1,8 +1,8 @@
-# memp3
+# memdio
 
 **AI memory encoded in sound. Lossless, fast, and hardware-adaptive.**
 
-memp3 encodes text into FLAC audio files with Reed-Solomon error correction, stores them in SQLite, and provides semantic search via MCP for Claude Desktop.
+memdio encodes text into FLAC audio files with Reed-Solomon error correction, stores them in SQLite, and provides semantic search via MCP for Claude Desktop.
 
 ## Architecture
 
@@ -41,9 +41,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "memp3": {
+    "memdio": {
       "command": "/path/to/venv/bin/python",
-      "args": ["-u", "-m", "memp3.mcp"]
+      "args": ["-u", "-m", "memdio.mcp"]
     }
   }
 }
@@ -64,45 +64,45 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```bash
 # Store and retrieve
-memp3 encode "Meeting at 3pm in Thane" --tags "meeting,thane"
-memp3 decode <memory-id>
+memdio encode "Meeting at 3pm in Thane" --tags "meeting,thane"
+memdio decode <memory-id>
 
 # Search
-memp3 search "meeting"
-memp3 semantic-search "schedule appointment"
+memdio search "meeting"
+memdio semantic-search "schedule appointment"
 
 # Manage
-memp3 list
-memp3 delete <memory-id>
-memp3 info <memory-id>
-memp3 stats
+memdio list
+memdio delete <memory-id>
+memdio info <memory-id>
+memdio stats
 
 # Export
-memp3 export-flac <memory-id>
-memp3 export-wav <memory-id>
+memdio export-flac <memory-id>
+memdio export-wav <memory-id>
 
 # Servers
-memp3 mcp          # MCP stdio server (Claude Desktop)
-memp3 serve        # REST API server
+memdio mcp          # MCP stdio server (Claude Desktop)
+memdio serve        # REST API server
 ```
 
 ## REST API
 
 ```bash
 # Start server
-memp3 serve
+memdio serve
 
 # Create API key
-memp3 create-key alice
+memdio create-key alice
 
 # Use API
 curl -X POST http://localhost:8000/memories \
-  -H "Authorization: Bearer memp3_xxxx" \
+  -H "Authorization: Bearer memdio_xxxx" \
   -H "Content-Type: application/json" \
   -d '{"content": "Meeting at 3pm", "tags": "meeting"}'
 
 curl http://localhost:8000/memories?query=meeting \
-  -H "Authorization: Bearer memp3_xxxx"
+  -H "Authorization: Bearer memdio_xxxx"
 ```
 
 ## How It Works
@@ -155,7 +155,7 @@ Reed-Solomon RS(255,223) recovers the original text even if 5% of audio samples 
 Per-user isolation with API key auth:
 
 ```
-/data/memp3/users/
+/data/memdio/users/
   alice/index.db    <-- all of Alice's memories
   bob/index.db      <-- all of Bob's memories
 ```

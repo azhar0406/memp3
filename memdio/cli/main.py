@@ -5,7 +5,7 @@ app = typer.Typer()
 
 
 def _get_storage():
-    from memp3.core.storage import StorageManager
+    from memdio.core.storage import StorageManager
     return StorageManager()
 
 
@@ -193,7 +193,7 @@ def mcp():
     """Start MCP server for Claude Desktop (stdio transport)"""
     import asyncio
     import sys
-    from memp3.mcp.server import run_mcp_server
+    from memdio.mcp.server import run_mcp_server
     # No stdout output — MCP uses stdio for JSON protocol
     print("Starting MCP server (stdio transport)...", file=sys.stderr)
     asyncio.run(run_mcp_server())
@@ -206,8 +206,8 @@ def serve(
 ):
     """Start REST API server"""
     import uvicorn
-    from memp3.api.server import app as api_app
-    typer.echo(f"Starting memp3 API on {host}:{port}")
+    from memdio.api.server import app as api_app
+    typer.echo(f"Starting memdio API on {host}:{port}")
     uvicorn.run(api_app, host=host, port=port, log_level="info")
 
 
@@ -216,7 +216,7 @@ def create_key(
     user_id: str = typer.Argument(..., help="User ID to create key for"),
 ):
     """Create an API key for a user"""
-    from memp3.api.auth import create_api_key
+    from memdio.api.auth import create_api_key
     key = create_api_key(user_id)
     typer.echo(f"API key for {user_id}: {key}")
     typer.echo("Save this key — it won't be shown again.")

@@ -1,6 +1,6 @@
 import pytest
 
-from memp3.core.ecc import ReedSolomonECC
+from memdio.core.ecc import ReedSolomonECC
 
 
 class TestReedSolomonECC:

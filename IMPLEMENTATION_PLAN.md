@@ -1,12 +1,12 @@
-# Implementation Plan: memp3 as an MCP Server
+# Implementation Plan: memdio as an MCP Server
 
-Based on the basic-memory project, here's how we'll implement memp3 to work similarly:
+Based on the basic-memory project, here's how we'll implement memdio to work similarly:
 
 ## Project Structure
 ```
-memp3/
+memdio/
 ├── src/
-│   └── memp3/
+│   └── memdio/
 │       ├── __init__.py
 │       ├── cli/
 │       │   ├── __init__.py
@@ -25,16 +25,16 @@ memp3/
 ├── tests/
 ├── pyproject.toml
 ├── README.md
-└── memp3-complete-plan.md
+└── memdio-complete-plan.md
 ```
 
 ## Key Features to Implement
 
 1. **CLI Interface**:
-   - `memp3 mcp` - Start MCP server for Claude Desktop integration
-   - `memp3 encode` - Encode text to FLAC
-   - `memp3 decode` - Decode FLAC to text
-   - `memp3 search` - Search memory chunks
+   - `memdio mcp` - Start MCP server for Claude Desktop integration
+   - `memdio encode` - Encode text to FLAC
+   - `memdio decode` - Decode FLAC to text
+   - `memdio search` - Search memory chunks
 
 2. **MCP Integration**:
    - Implement Model Context Protocol server
@@ -52,7 +52,7 @@ memp3/
 
 4. **Installation & Configuration**:
    - Package as PyPI package
-   - Support installation with `uv tool install memp3`
+   - Support installation with `uv tool install memdio`
    - Claude Desktop integration via config file
 
 ## Next Steps

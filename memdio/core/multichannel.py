@@ -23,7 +23,7 @@ import zlib
 
 import numpy as np
 
-HEADER_MAGIC = b"MC3M"  # Multi-Channel memp3
+HEADER_MAGIC = b"MC3M"  # Multi-Channel memdio
 HEADER_VERSION = 3
 HEADER_FORMAT = "<4sBII"
 HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
@@ -71,7 +71,7 @@ class MultiChannelEncoder:
         compressed = zlib.compress(raw, level=6)
 
         try:
-            from memp3.core.ecc import ReedSolomonECC
+            from memdio.core.ecc import ReedSolomonECC
             ecc = ReedSolomonECC()
             payload = ecc.encode(compressed)
         except ImportError:
@@ -103,7 +103,7 @@ class MultiChannelEncoder:
             raise ValueError(f"CRC mismatch: {expected_crc:#010x} vs {actual_crc:#010x}")
 
         try:
-            from memp3.core.ecc import ReedSolomonECC
+            from memdio.core.ecc import ReedSolomonECC
             ecc = ReedSolomonECC()
             payload = ecc.decode(payload)
         except ImportError:

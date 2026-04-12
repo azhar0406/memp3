@@ -1,13 +1,13 @@
-# memp3 - Phase 1 MVP Implementation Plan
+# memdio - Phase 1 MVP Implementation Plan
 
 ## Goal
-Create a minimal working version of memp3 that works like basic-memory:
+Create a minimal working version of memdio that works like basic-memory:
 - Simple audio encoding (text → frequency mapping → FLAC)
 - CLI interface with encode/decode commands
 - File storage with metadata
 - SQLite indexing for search
 - MCP integration for Claude Desktop
-- Installable with `uv tool install memp3`
+- Installable with `uv tool install memdio`
 
 ## Core Components
 
@@ -17,15 +17,15 @@ Create a minimal working version of memp3 that works like basic-memory:
 - Save as FLAC with soundfile
 
 ### 2. Storage System
-- Store FLAC files in `~/memp3/memory/` 
-- Metadata in SQLite: `~/memp3/index.db`
+- Store FLAC files in `~/memdio/memory/` 
+- Metadata in SQLite: `~/memdio/index.db`
 - Simple ID generation and lookup
 
 ### 3. CLI Interface
-- `memp3 encode "text"` → generates UUID.flac
-- `memp3 decode uuid` → retrieves and decodes
-- `memp3 search "query"` → searches metadata
-- `memp3 mcp` → starts MCP server
+- `memdio encode "text"` → generates UUID.flac
+- `memdio decode uuid` → retrieves and decodes
+- `memdio search "query"` → searches metadata
+- `memdio mcp` → starts MCP server
 
 ### 4. MCP Integration
 - HTTP endpoints for Claude Desktop

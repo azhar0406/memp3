@@ -1,4 +1,4 @@
-"""MCP server for memp3 — exposes memory tools via stdio transport."""
+"""MCP server for memdio — exposes memory tools via stdio transport."""
 
 import logging
 import sys
@@ -8,7 +8,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from memp3.core.validators import ValidationError
+from memdio.core.validators import ValidationError
 
 # Log to stderr so it doesn't corrupt stdio JSON transport
 logging.basicConfig(
@@ -16,9 +16,9 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     stream=sys.stderr,
 )
-logger = logging.getLogger("memp3.mcp")
+logger = logging.getLogger("memdio.mcp")
 
-server = Server("memp3")
+server = Server("memdio")
 
 _storage_instance = None
 
@@ -27,7 +27,7 @@ def _get_storage():
     global _storage_instance
     if _storage_instance is None:
         t0 = time.perf_counter()
-        from memp3.core.storage import StorageManager
+        from memdio.core.storage import StorageManager
         _storage_instance = StorageManager()
         logger.info("StorageManager initialized in %.3fs", time.perf_counter() - t0)
     return _storage_instance
@@ -202,7 +202,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
 async def run_mcp_server():
     """Run the MCP server on stdio."""
-    logger.info("=== memp3 MCP server starting ===")
+    logger.info("=== memdio MCP server starting ===")
     async with stdio_server() as (read_stream, write_stream):
         logger.info("=== stdio transport ready ===")
         await server.run(read_stream, write_stream, server.create_initialization_options())

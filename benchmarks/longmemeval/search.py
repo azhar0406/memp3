@@ -1,9 +1,9 @@
-"""Search memp3 for relevant memories given a question."""
+"""Search memdio for relevant memories given a question."""
 
 import re
 
 from benchmarks.config import MAX_MEMORY_CHARS, SEARCH_TOP_K
-from memp3.core.storage import StorageManager
+from memdio.core.storage import StorageManager
 
 # Patterns to detect temporal queries
 _TEMPORAL_PATTERNS = re.compile(

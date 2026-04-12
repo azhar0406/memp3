@@ -1,6 +1,6 @@
 import pytest
 
-from memp3.core.validators import (
+from memdio.core.validators import (
     ValidationError,
     validate_content,
     validate_memory_id,

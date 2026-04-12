@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
 from typer.testing import CliRunner
-from memp3.cli.main import app
+from memdio.cli.main import app
 
 runner = CliRunner()
 
@@ -9,9 +9,9 @@ runner = CliRunner()
 @pytest.fixture(autouse=True)
 def mock_storage(tmp_path):
     """Use tmp_path for all storage to avoid side effects."""
-    with patch("memp3.cli.main._get_storage") as mock:
-        from memp3.core.storage import StorageManager
-        storage = StorageManager(base_path=str(tmp_path / "memp3"))
+    with patch("memdio.cli.main._get_storage") as mock:
+        from memdio.core.storage import StorageManager
+        storage = StorageManager(base_path=str(tmp_path / "memdio"))
         mock.return_value = storage
         yield storage
 

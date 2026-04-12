@@ -1,4 +1,4 @@
-"""LongMemEval benchmark runner for memp3.
+"""LongMemEval benchmark runner for memdio.
 
 Usage:
     python -m benchmarks.longmemeval.run                          # all models
@@ -173,7 +173,7 @@ def run_benchmark(model: str, run_id: str, limit: int | None = None, workers: in
 
 
 def main():
-    parser = argparse.ArgumentParser(description="LongMemEval benchmark for memp3")
+    parser = argparse.ArgumentParser(description="LongMemEval benchmark for memdio")
     parser.add_argument("--model", type=str, help="Single model to test (default: all)")
     parser.add_argument("--resume", type=str, help="Resume from run ID")
     parser.add_argument("--limit", type=int, help="Limit number of questions (for testing)")

@@ -1,4 +1,4 @@
-"""Multi-tenant REST API for memp3 SaaS.
+"""Multi-tenant REST API for memdio SaaS.
 
 Each user gets isolated storage in their own folder.
 Authentication via API key in Authorization header.
@@ -11,15 +11,15 @@ from functools import lru_cache
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel
 
-from memp3.api.auth import verify_api_key
-from memp3.core.storage import StorageManager
+from memdio.api.auth import verify_api_key
+from memdio.core.storage import StorageManager
 
 logger = logging.getLogger(__name__)
 
-DATA_ROOT = os.environ.get("MEMP3_DATA_ROOT", "/data/memp3")
+DATA_ROOT = os.environ.get("MEMDIO_DATA_ROOT", "/data/memdio")
 
 app = FastAPI(
-    title="memp3 API",
+    title="memdio API",
     description="AI memory encoded in sound — multi-tenant SaaS",
     version="0.2.0",
 )
@@ -74,7 +74,7 @@ class StatsResponse(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"service": "memp3", "version": "0.2.0"}
+    return {"service": "memdio", "version": "0.2.0"}
 
 
 @app.get("/health")

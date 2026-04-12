@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from memp3.core.multichannel import MultiChannelEncoder
+from memdio.core.multichannel import MultiChannelEncoder
 
 
 class TestMultiChannelEncoder:
@@ -33,7 +33,7 @@ class TestMultiChannelEncoder:
         assert enc.decode(signal) == text
 
     def test_smaller_signal_than_single_channel(self):
-        from memp3.core.encoder import BinaryEncoder
+        from memdio.core.encoder import BinaryEncoder
         mc = MultiChannelEncoder()
         sc = BinaryEncoder()
         text = "x" * 1000

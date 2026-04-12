@@ -1,8 +1,8 @@
-# Using memp3 with Claude Desktop
+# Using memdio with Claude Desktop
 
 ## Setup
 
-1. Install memp3:
+1. Install memdio:
    ```bash
    pip install -e .
    ```
@@ -11,32 +11,32 @@
    ```json
    {
      "mcpServers": {
-       "memp3": {
-         "command": "memp3",
+       "memdio": {
+         "command": "memdio",
          "args": ["mcp"]
        }
      }
    }
    ```
 
-3. Start the memp3 MCP server:
+3. Start the memdio MCP server:
    ```bash
-   memp3 mcp
+   memdio mcp
    ```
 
 ## Usage in Claude Conversations
 
-Once configured, you can use memp3 directly in your conversations with Claude:
+Once configured, you can use memdio directly in your conversations with Claude:
 
 ### Storing Memories
 ```
-Claude, please store this conversation summary using memp3:
-"Today we discussed the memp3 project implementation and tested the MCP integration."
+Claude, please store this conversation summary using memdio:
+"Today we discussed the memdio project implementation and tested the MCP integration."
 ```
 
 ### Retrieving Memories
 ```
-Claude, can you retrieve my previous conversation about memp3?
+Claude, can you retrieve my previous conversation about memdio?
 ```
 
 ### Searching Memories
@@ -46,7 +46,7 @@ Claude, find all memories related to MCP integration.
 
 ## API Usage
 
-You can also interact with memp3 programmatically:
+You can also interact with memdio programmatically:
 
 ### Create a Memory
 ```bash
@@ -67,8 +67,8 @@ curl -X GET "http://127.0.0.1:3141/memories?query=test"
 
 ## File Storage
 
-memp3 stores memories in:
-- Audio files: `~/memp3/memory/*.flac`
-- Metadata: `~/memp3/index.db` (SQLite database)
+memdio stores memories in:
+- Audio files: `~/memdio/memory/*.flac`
+- Metadata: `~/memdio/index.db` (SQLite database)
 
 This allows you to access your memories even outside of Claude Desktop.

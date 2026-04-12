@@ -1,17 +1,17 @@
 /**
- * memp3 provider for MemoryBench.
+ * memdio provider for MemoryBench.
  *
- * Connects to a running memp3 FastAPI server and implements the MemoryBench
+ * Connects to a running memdio FastAPI server and implements the MemoryBench
  * Provider interface for benchmarking against LongMemEval and other datasets.
  *
  * Prerequisites:
- *   1. Start memp3 API server: uvicorn memp3.api.server:app --port 8100
- *   2. Create an API key: python -c "from memp3.api.auth import create_api_key; print(create_api_key('bench'))"
- *   3. Set env vars: MEMP3_API_URL, MEMP3_API_KEY
+ *   1. Start memdio API server: uvicorn memdio.api.server:app --port 8100
+ *   2. Create an API key: python -c "from memdio.api.auth import create_api_key; print(create_api_key('bench'))"
+ *   3. Set env vars: MEMDIO_API_URL, MEMDIO_API_KEY
  */
 
-const MEMP3_API_URL = process.env.MEMP3_API_URL || "http://localhost:8100";
-const MEMP3_API_KEY = process.env.MEMP3_API_KEY || "";
+const MEMDIO_API_URL = process.env.MEMDIO_API_URL || "http://localhost:8100";
+const MEMDIO_API_KEY = process.env.MEMDIO_API_KEY || "";
 
 interface MemoryResult {
   id: string;
@@ -29,9 +29,9 @@ async function apiCall(
   path: string,
   body?: unknown
 ): Promise<unknown> {
-  const url = `${MEMP3_API_URL}${path}`;
+  const url = `${MEMDIO_API_URL}${path}`;
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${MEMP3_API_KEY}`,
+    Authorization: `Bearer ${MEMDIO_API_KEY}`,
     "Content-Type": "application/json",
   };
 
@@ -43,22 +43,22 @@ async function apiCall(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`memp3 API error ${res.status}: ${text}`);
+    throw new Error(`memdio API error ${res.status}: ${text}`);
   }
 
   return res.json();
 }
 
 /**
- * memp3 MemoryBench Provider
+ * memdio MemoryBench Provider
  *
  * This implements the Provider interface from MemoryBench.
  * To use with MemoryBench, copy this file into the memorybench repo at:
- *   src/providers/memp3/index.ts
+ *   src/providers/memdio/index.ts
  * and register it in src/providers/index.ts
  */
-export const memp3Provider = {
-  name: "memp3",
+export const memdioProvider = {
+  name: "memdio",
 
   concurrency: {
     default: 10,
@@ -70,19 +70,19 @@ export const memp3Provider = {
   },
 
   async initialize(): Promise<void> {
-    if (!MEMP3_API_KEY) {
+    if (!MEMDIO_API_KEY) {
       throw new Error(
-        "MEMP3_API_KEY not set. Create one with: python -c \"from memp3.api.auth import create_api_key; print(create_api_key('bench'))\""
+        "MEMDIO_API_KEY not set. Create one with: python -c \"from memdio.api.auth import create_api_key; print(create_api_key('bench'))\""
       );
     }
     // Health check
-    const res = await fetch(`${MEMP3_API_URL}/health`);
+    const res = await fetch(`${MEMDIO_API_URL}/health`);
     if (!res.ok) {
       throw new Error(
-        `memp3 API not reachable at ${MEMP3_API_URL}. Start with: uvicorn memp3.api.server:app --port 8100`
+        `memdio API not reachable at ${MEMDIO_API_URL}. Start with: uvicorn memdio.api.server:app --port 8100`
       );
     }
-    console.log(`memp3 provider initialized (${MEMP3_API_URL})`);
+    console.log(`memdio provider initialized (${MEMDIO_API_URL})`);
   },
 
   async ingest(
@@ -121,7 +121,7 @@ export const memp3Provider = {
     _result: { documentIds: string[] },
     _containerTag: string
   ): Promise<void> {
-    // memp3 indexes synchronously during ingest — no-op
+    // memdio indexes synchronously during ingest — no-op
   },
 
   async search(
@@ -178,4 +178,4 @@ export const memp3Provider = {
   },
 };
 
-export default memp3Provider;
+export default memdioProvider;

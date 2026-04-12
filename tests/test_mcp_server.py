@@ -1,13 +1,13 @@
 import pytest
 
-from memp3.mcp.server import call_tool, list_tools
+from memdio.mcp.server import call_tool, list_tools
 
 
 @pytest.fixture(autouse=True)
 def mock_storage(tmp_path, monkeypatch):
-    import memp3.mcp.server as srv
-    from memp3.core.storage import StorageManager
-    storage = StorageManager(base_path=str(tmp_path / "memp3"))
+    import memdio.mcp.server as srv
+    from memdio.core.storage import StorageManager
+    storage = StorageManager(base_path=str(tmp_path / "memdio"))
 
     monkeypatch.setattr(srv, "_storage_instance", storage)
     yield storage

@@ -1,11 +1,11 @@
 {
-  "name": "memorybench-memp3-provider",
+  "name": "memorybench-memdio-provider",
   "version": "0.1.0",
-  "description": "memp3 provider for MemoryBench — evaluates memp3 against LongMemEval and other benchmarks",
+  "description": "memdio provider for MemoryBench — evaluates memdio against LongMemEval and other benchmarks",
   "type": "module",
-  "main": "src/memp3/index.ts",
+  "main": "src/memdio/index.ts",
   "scripts": {
-    "bench": "bun run src/memp3/index.ts"
+    "bench": "bun run src/memdio/index.ts"
   },
   "dependencies": {
     "memorybench": "github:supermemoryai/memorybench"

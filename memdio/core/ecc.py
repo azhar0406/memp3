@@ -1,4 +1,4 @@
-"""Error correction for memp3 audio data."""
+"""Error correction for memdio audio data."""
 
 from reedsolo import RSCodec
 

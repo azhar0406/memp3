@@ -1,4 +1,4 @@
-"""Storage manager for memp3 memories.
+"""Storage manager for memdio memories.
 
 Architecture — everything in one SQLite database:
   - FLAC audio blobs (lossless compressed)
@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
-from memp3.core.validators import (
+from memdio.core.validators import (
     validate_content,
     validate_memory_id,
     validate_query,
@@ -197,7 +197,7 @@ class StorageManager:
 
     def __init__(self, base_path=None):
         if base_path is None:
-            base_path = os.path.expanduser("~/memp3")
+            base_path = os.path.expanduser("~/memdio")
         self.base_path = base_path
         self.db_path = os.path.join(base_path, "index.db")
 
@@ -423,7 +423,7 @@ class StorageManager:
             logger.warning("Encoder v%d is deprecated, using v3 (multi-channel)", encoder_version)
             encoder_version = 3
 
-        from memp3.core.multichannel import MultiChannelEncoder
+        from memdio.core.multichannel import MultiChannelEncoder
         encoder = MultiChannelEncoder()
 
         signal = encoder.encode(content)
@@ -486,13 +486,13 @@ class StorageManager:
         signal, sample_rate = _flac_blob_to_signal(flac_blob)
 
         if enc_ver == 3:
-            from memp3.core.multichannel import MultiChannelEncoder
+            from memdio.core.multichannel import MultiChannelEncoder
             encoder = MultiChannelEncoder(sample_rate=sample_rate)
         elif enc_ver == 2:
-            from memp3.core.encoder import BinaryEncoder
+            from memdio.core.encoder import BinaryEncoder
             encoder = BinaryEncoder(sample_rate=sample_rate)
         else:
-            from memp3.core.encoder import SimpleEncoder
+            from memdio.core.encoder import SimpleEncoder
             encoder = SimpleEncoder(sample_rate)
 
         return encoder.decode(signal)
@@ -655,20 +655,20 @@ class StorageManager:
 
         # Backfill/re-embed: rows without embeddings OR stale embeddings from old model
         meta_table = self._conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='memp3_meta'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='memdio_meta'"
         ).fetchone()
         current_model = "BAAI/bge-small-en-v1.5"
         needs_reembed = False
 
         if not meta_table:
-            self._conn.execute("CREATE TABLE memp3_meta (key TEXT PRIMARY KEY, value TEXT)")
-            self._conn.execute("INSERT INTO memp3_meta VALUES ('embed_model', ?)", (current_model,))
+            self._conn.execute("CREATE TABLE memdio_meta (key TEXT PRIMARY KEY, value TEXT)")
+            self._conn.execute("INSERT INTO memdio_meta VALUES ('embed_model', ?)", (current_model,))
             self._conn.commit()
             needs_reembed = True
         else:
-            row = self._conn.execute("SELECT value FROM memp3_meta WHERE key='embed_model'").fetchone()
+            row = self._conn.execute("SELECT value FROM memdio_meta WHERE key='embed_model'").fetchone()
             if not row or row[0] != current_model:
-                self._conn.execute("INSERT OR REPLACE INTO memp3_meta VALUES ('embed_model', ?)", (current_model,))
+                self._conn.execute("INSERT OR REPLACE INTO memdio_meta VALUES ('embed_model', ?)", (current_model,))
                 self._conn.commit()
                 needs_reembed = True
 

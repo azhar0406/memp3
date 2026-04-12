@@ -1,13 +1,13 @@
 import pytest
 
-from memp3.core.validators import ValidationError
+from memdio.core.validators import ValidationError
 
 
 class TestStorageManager:
     def test_store_and_retrieve(self, storage):
-        mem_id = storage.store("Hello, memp3!")
+        mem_id = storage.store("Hello, memdio!")
         content = storage.retrieve(mem_id)
-        assert content == "Hello, memp3!"
+        assert content == "Hello, memdio!"
 
     def test_store_with_tags(self, storage):
         mem_id = storage.store("tagged memory", tags="test,demo")

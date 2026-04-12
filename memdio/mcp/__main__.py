@@ -17,7 +17,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     stream=sys.stderr,
 )
-logger = logging.getLogger("memp3.mcp")
+logger = logging.getLogger("memdio.mcp")
 
 TOOLS = [
     {
@@ -102,11 +102,11 @@ def _get_storage():
     global _storage
     if _storage is None:
         t0 = time.perf_counter()
-        from memp3.core.storage import StorageManager
+        from memdio.core.storage import StorageManager
         _storage = StorageManager()
         # Pre-import heavy libs so first store_memory isn't slow
         import numpy, scipy, soundfile  # noqa: F401
-        from memp3.core.multichannel import MultiChannelEncoder  # noqa: F401
+        from memdio.core.multichannel import MultiChannelEncoder  # noqa: F401
         logger.info("Storage init: %.3fs", time.perf_counter() - t0)
     return _storage
 
@@ -199,7 +199,7 @@ def handle_message(msg):
             "result": {
                 "protocolVersion": client_version,
                 "capabilities": {"tools": {"listChanged": False}},
-                "serverInfo": {"name": "memp3", "version": "0.2.0"},
+                "serverInfo": {"name": "memdio", "version": "0.2.0"},
             },
         })
         logger.info("Initialized with protocol version %s", client_version)
@@ -251,8 +251,8 @@ def _preload_libs():
     def _load():
         t0 = time.perf_counter()
         import numpy, scipy, soundfile  # noqa: F401
-        from memp3.core.multichannel import MultiChannelEncoder  # noqa: F401
-        from memp3.core.ecc import ReedSolomonECC  # noqa: F401
+        from memdio.core.multichannel import MultiChannelEncoder  # noqa: F401
+        from memdio.core.ecc import ReedSolomonECC  # noqa: F401
         # Pre-load FastEmbed ONNX model so first semantic_search is fast
         try:
             from fastembed import TextEmbedding
@@ -266,7 +266,7 @@ def _preload_libs():
 
 
 def main():
-    logger.info("=== memp3 MCP server starting (lightweight) ===")
+    logger.info("=== memdio MCP server starting (lightweight) ===")
     _preload_libs()
 
     # Read from raw binary buffer — avoids Python's TextIOWrapper read-ahead

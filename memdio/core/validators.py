@@ -1,4 +1,4 @@
-"""Input validation for memp3."""
+"""Input validation for memdio."""
 
 import re
 import uuid as _uuid

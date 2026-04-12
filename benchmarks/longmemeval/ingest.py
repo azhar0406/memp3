@@ -1,11 +1,11 @@
-"""Ingest LongMemEval haystack sessions into memp3 StorageManager."""
+"""Ingest LongMemEval haystack sessions into memdio StorageManager."""
 
 import json
 import os
 import shutil
 import tempfile
 
-from memp3.core.storage import StorageManager
+from memdio.core.storage import StorageManager
 
 
 def format_session(session: list[dict], session_date: str | None = None) -> str:
@@ -26,7 +26,7 @@ def ingest_question(question: dict, base_dir: str | None = None) -> tuple[Storag
     Returns (storage_manager, db_path) so caller can clean up.
     """
     if base_dir is None:
-        base_dir = tempfile.mkdtemp(prefix="memp3_bench_")
+        base_dir = tempfile.mkdtemp(prefix="memdio_bench_")
 
     qid = question["question_id"]
     db_dir = os.path.join(base_dir, qid)

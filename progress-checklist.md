@@ -1,13 +1,13 @@
-# memp3 Production Implementation Progress Checklist
+# memdio Production Implementation Progress Checklist
 
 ## Phase 1: MVP - Basic Memory Clone (Current Focus)
-**Goal**: Create a minimal working version of memp3 that works like basic-memory
+**Goal**: Create a minimal working version of memdio that works like basic-memory
 
 ### ✅ Completed
 - [x] Simple audio encoding (text → frequency mapping → FLAC)
 - [x] CLI interface with encode/decode/search/list/mcp commands
-- [x] File storage system (`~/memp3/memory/`)
-- [x] SQLite indexing (`~/memp3/index.db`)
+- [x] File storage system (`~/memdio/memory/`)
+- [x] SQLite indexing (`~/memdio/index.db`)
 - [x] Perfect round-trip encoding/decoding
 - [x] Basic search functionality
 - [x] **MCP server implementation for Claude Desktop**
@@ -56,8 +56,8 @@
 
 ## Current File Structure
 ```
-memp3/
-├── memp3/                 # Main package (production-ready structure)
+memdio/
+├── memdio/                 # Main package (production-ready structure)
 │   ├── __init__.py
 │   ├── cli/
 │   │   ├── __init__.py

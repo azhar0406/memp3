@@ -1,4 +1,4 @@
-"""API key authentication for multi-tenant memp3 SaaS."""
+"""API key authentication for multi-tenant memdio SaaS."""
 
 import hashlib
 import json
@@ -8,7 +8,7 @@ import secrets
 
 logger = logging.getLogger(__name__)
 
-KEYS_FILE = os.environ.get("MEMP3_KEYS_FILE", "/data/memp3/api_keys.json")
+KEYS_FILE = os.environ.get("MEMDIO_KEYS_FILE", "/data/memdio/api_keys.json")
 
 
 def _load_keys() -> dict:
@@ -31,7 +31,7 @@ def _hash_key(api_key: str) -> str:
 def create_api_key(user_id: str) -> str:
     """Create a new API key for a user. Returns the raw key (only shown once)."""
     keys = _load_keys()
-    raw_key = f"memp3_{secrets.token_urlsafe(32)}"
+    raw_key = f"memdio_{secrets.token_urlsafe(32)}"
     keys[_hash_key(raw_key)] = {"user_id": user_id}
     _save_keys(keys)
     logger.info("Created API key for user %s", user_id)

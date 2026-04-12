@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY pyproject.toml .
-COPY memp3/ memp3/
+COPY memdio/ memdio/
 
 RUN pip install --no-cache-dir ".[search,dev]"
 
@@ -21,14 +21,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
-COPY --from=builder /usr/local/bin/memp3 /usr/local/bin/memp3
-COPY memp3/ memp3/
+COPY --from=builder /usr/local/bin/memdio /usr/local/bin/memdio
+COPY memdio/ memdio/
 COPY pyproject.toml .
 
 RUN pip install --no-cache-dir .
 
-ENV MEMP3_HOME=/data/memp3
-VOLUME /data/memp3
+ENV MEMDIO_HOME=/data/memdio
+VOLUME /data/memdio
 
-ENTRYPOINT ["memp3"]
+ENTRYPOINT ["memdio"]
 CMD ["--help"]

@@ -1,4 +1,4 @@
-"""Audio encoders for memp3 — convert text to frequency-encoded audio."""
+"""Audio encoders for memdio — convert text to frequency-encoded audio."""
 
 import struct
 import zlib
@@ -107,7 +107,7 @@ class BinaryEncoder:
 
         # Apply ECC if available
         try:
-            from memp3.core.ecc import ReedSolomonECC
+            from memdio.core.ecc import ReedSolomonECC
             ecc = ReedSolomonECC()
             payload = ecc.encode(compressed)
         except ImportError:
@@ -145,7 +145,7 @@ class BinaryEncoder:
 
         # Decode ECC if available
         try:
-            from memp3.core.ecc import ReedSolomonECC
+            from memdio.core.ecc import ReedSolomonECC
             ecc = ReedSolomonECC()
             decompressed_payload = ecc.decode(payload)
         except ImportError:
