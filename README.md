@@ -64,7 +64,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```bash
 # Store and retrieve
-memdio encode "Meeting at 3pm in Thane" --tags "meeting,thane"
+memdio encode "Meeting at 3pm with Alice" --tags "meeting,alice"
 memdio decode <memory-id>
 
 # Search
@@ -99,10 +99,54 @@ memdio create-key alice
 curl -X POST http://localhost:8000/memories \
   -H "Authorization: Bearer memdio_xxxx" \
   -H "Content-Type: application/json" \
-  -d '{"content": "Meeting at 3pm", "tags": "meeting"}'
+  -d '{"content": "Meeting at 3pm with Bob", "tags": "meeting"}'
 
 curl http://localhost:8000/memories?query=meeting \
   -H "Authorization: Bearer memdio_xxxx"
+```
+
+## Limits
+
+| Parameter | Value |
+|-----------|-------|
+| Max memory size | 1 MB per memory |
+| Max query length | 1,000 characters |
+| Max tags length | 500 characters |
+| Embedding dimensions | 384 (bge-small-en-v1.5) |
+| Contradiction threshold | 0.85 cosine similarity |
+| Relation extension threshold | 0.50 cosine similarity |
+| Default search results | 10 (configurable) |
+| SQLite mmap cache | 64 MB |
+
+## LongMemEval Benchmark
+
+Evaluated on [LongMemEval](https://github.com/xiaowu0162/LongMemEval) (500 questions across 6 task types).
+
+**Model:** Gemini 2.0 Flash (via OpenRouter) | **Context:** 2,000 chars per memory | **Top-K:** 10
+
+| Task Type | Questions | Accuracy |
+|-----------|-----------|----------|
+| Single-session (assistant) | 56 | **83.9%** |
+| Single-session (user) | 70 | 57.1% |
+| Single-session (preference) | 30 | 53.3% |
+| Knowledge update | 78 | 38.5% |
+| Multi-session | 133 | 12.8% |
+| Temporal reasoning | 133 | 12.0% |
+| Abstention | 30 | **100.0%** |
+| **Task-averaged** | **500** | **42.9%** |
+
+**Key observations:**
+- Perfect abstention — correctly refuses when information is missing
+- Strong single-session recall (57–84%) shows retrieval pipeline works well
+- Temporal reasoning and multi-session are the hardest categories (active improvement area)
+- Hybrid search (FTS5 + semantic + temporal + relation expansion) retrieves ~15 memories per question
+
+Run the benchmark yourself:
+
+```bash
+pip install -e ".[benchmark]"
+export OPENROUTER_API_KEY=your-key
+python -m benchmarks.longmemeval.run --model google/gemini-2.0-flash-001
 ```
 
 ## How It Works
@@ -130,7 +174,7 @@ FLAC lossless compression --> SQLite blob
 
 ### Search
 
-- **FTS5**: Word-level matching. "Lakshya wedding" finds "Lakshya is getting married" because "Lakshya" matches.
+- **FTS5**: Word-level matching. "Alice wedding" finds "Alice is getting married" because "Alice" matches.
 - **Semantic**: FastEmbed (ONNX) generates 384-dim embeddings, sqlite-vector does cosine similarity. "motorcycle" finds "bike" (0.837 score).
 
 ### Error Correction
