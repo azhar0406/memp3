@@ -120,33 +120,42 @@ curl http://localhost:8000/memories?query=meeting \
 
 ## LongMemEval Benchmark
 
-Evaluated on [LongMemEval](https://github.com/xiaowu0162/LongMemEval) (500 questions across 6 task types).
+Evaluated on [LongMemEval](https://github.com/xiaowu0162/LongMemEval) — 500 questions across 6 task types. All models via OpenRouter, context window 2,000 chars per memory, Top-K 10.
 
-**Model:** Gemini 2.0 Flash (via OpenRouter) | **Context:** 2,000 chars per memory | **Top-K:** 10
+### Overall Results
 
-| Task Type | Questions | Accuracy |
-|-----------|-----------|----------|
-| Single-session (assistant) | 56 | **83.9%** |
-| Single-session (user) | 70 | 57.1% |
-| Single-session (preference) | 30 | 53.3% |
-| Knowledge update | 78 | 38.5% |
-| Multi-session | 133 | 12.8% |
-| Temporal reasoning | 133 | 12.0% |
-| Abstention | 30 | **100.0%** |
-| **Task-averaged** | **500** | **42.9%** |
+| Model | Task-Avg | Overall | Abstention |
+|-------|----------|---------|------------|
+| **Gemma 3 27B** | **46.3%** | **38.2%** | 86.7% |
+| **Claude Sonnet 4** | **45.1%** | **35.2%** | 96.7% |
+| Gemini 2.0 Flash | 42.9% | 33.2% | 100.0% |
+| Qwen 2.5 72B | 42.7% | 34.8% | 90.0% |
+| Grok 3 Mini | 42.5% | 33.2% | 96.7% |
+
+### Breakdown by Task Type
+
+| Task Type | Qs | Gemma 3 27B | Claude Sonnet 4 | Gemini 2.0 Flash | Qwen 2.5 72B | Grok 3 Mini |
+|-----------|-----|-------------|-----------------|------------------|--------------|-------------|
+| Single-session (assistant) | 56 | 82.1% | **89.3%** | 83.9% | 85.7% | 87.5% |
+| Single-session (user) | 70 | **64.3%** | 61.4% | 57.1% | 61.4% | 58.6% |
+| Single-session (preference) | 30 | 50.0% | **53.3%** | **53.3%** | 36.7% | 50.0% |
+| Knowledge update | 78 | 42.3% | 39.7% | 38.5% | **43.6%** | 32.1% |
+| Multi-session | 133 | **15.8%** | 15.0% | 12.8% | 13.5% | 15.0% |
+| Temporal reasoning | 133 | **23.3%** | 12.0% | 12.0% | 15.0% | 12.0% |
 
 **Key observations:**
-- Perfect abstention — correctly refuses when information is missing
-- Strong single-session recall (57–84%) shows retrieval pipeline works well
-- Temporal reasoning and multi-session are the hardest categories (active improvement area)
-- Hybrid search (FTS5 + semantic + temporal + relation expansion) retrieves ~15 memories per question
+- Gemma 3 27B leads on task-averaged accuracy, driven by strong temporal reasoning (23.3% vs 12% for most others)
+- Claude Sonnet 4 is the best single-session assistant (89.3%) and preference extractor (53.3%)
+- All models achieve 87–100% abstention — memdio correctly signals when information is missing
+- Single-session recall is strong across the board (57–89%), validating the retrieval pipeline
+- Multi-session and temporal reasoning remain the hardest categories (active improvement area)
 
 Run the benchmark yourself:
 
 ```bash
 pip install -e ".[benchmark]"
 export OPENROUTER_API_KEY=your-key
-python -m benchmarks.longmemeval.run --model google/gemini-2.0-flash-001
+python -m benchmarks.longmemeval.run --model google/gemma-3-27b-it
 ```
 
 ## How It Works
